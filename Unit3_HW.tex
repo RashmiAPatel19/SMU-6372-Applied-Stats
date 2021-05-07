@@ -1,0 +1,605 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{unicode=true,
+            pdftitle={Unit3 HW},
+            pdfauthor={Turner},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\providecommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+
+  \title{Unit3 HW}
+    \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+    \author{Turner}
+    \preauthor{\centering\large\emph}
+  \postauthor{\par}
+      \predate{\centering\large\emph}
+  \postdate{\par}
+    \date{12/16/2018}
+
+
+\begin{document}
+\maketitle
+
+\hypertarget{hw-instructions}{%
+\subsection{HW Instructions}\label{hw-instructions}}
+
+The weekly HW assignments are designed to accomplish 2 goals for the
+MSDS student. The first is to provide a series of conceptual and
+analtical questions so the student can get a feel for their current
+understanding of the unit. The second goal is to introduce the students
+to standard functions and routines in R that effectively do the same
+things that the ``Procs'' do in SAS.
+
+R and SAS are both wonderful tools and as we go through the assignments,
+students will begin to recognize very quickly that they both have pros
+and cons.
+
+The formatting of the HW is as follows:\\
+1. A series of high level questions will be asked with either short
+answers or simple multiple choice responses.\\
+2. Analytical questions will be provided but a short vignette example of
+how R functions work for a given topic or method will be given. The
+student will then be asked a follow up question or two based on the
+output provided.\\
+3. Thirdly, a new data set will be given to allow the student to gain
+some experience with a new data set from start to finish.
+
+Solutions to the HW will be provided a day or two after the HW is
+submitted. It is up to the student to ``shore up'' any confusion or
+missunderstanding of a topic. Grading will be based on a combination of
+correctness, completion, and overall conciseness.
+
+The student may provide there answers in a seperate word document. Just
+make sure that it is easy to follow and that all questions have been
+addressed for the grader. You are welcome to use R markdown, but it is
+not required.
+
+\hypertarget{anova-conceptual-questions}{%
+\subsection{ANOVA Conceptual
+questions}\label{anova-conceptual-questions}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  State the necessary assumptions for Two Way ANOVA analysis to
+  beconducted. Note: That addative versus non additivie is not a
+  component of the assumptions
+\item
+  State in words what it means for there to be an ``interaction''
+  between two explanatory variables. Note: Do not explain the meaning in
+  terms of a graph with parallel lines.
+\item
+  What is the family wise error rate? What is multiple testing and why
+  is it an issue when conducting ANOVA type models such as Two Way
+  ANOVA?
+\item
+  True or False? The overall Type-III sums of squares F-test's allow the
+  analyst to determine where specific differences lie between levels of
+  the factor.
+\end{enumerate}
+
+\hypertarget{exercise-1-act-scores-revisited}{%
+\subsection{Exercise \#1 ACT Scores
+Revisited}\label{exercise-1-act-scores-revisited}}
+
+The first step in any analysis is appropriately describing the data both
+numerically and visually. For a Two Way ANOVA analysis, one of the most
+helpful visual tools is the mean profile plot (with or without the raw
+data). The following code reads in the ACT data set from our pre live
+discussion and provides a handy, modifiable, function that can make a
+quick summary statistics table really quick.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{setwd}\NormalTok{(}\StringTok{"~/Desktop/MSDS_NEW/ZippedFiles/Unit3/Unit3PreLive"}\NormalTok{)}
+
+\NormalTok{ACT<-}\KeywordTok{read.csv}\NormalTok{(}\StringTok{"MathACT_2.csv"}\NormalTok{)}
+
+
+\CommentTok{#Attaching the data set, creating a function, and creating a summary stats table.  Note: In line 44 below, you can add other statistics like median, IQR,etc.}
+
+\KeywordTok{attach}\NormalTok{(ACT)}
+\NormalTok{mysummary<-}\ControlFlowTok{function}\NormalTok{(x)\{}
+\NormalTok{  result<-}\KeywordTok{c}\NormalTok{(}\KeywordTok{length}\NormalTok{(x),}\KeywordTok{mean}\NormalTok{(x),}\KeywordTok{sd}\NormalTok{(x),}\KeywordTok{sd}\NormalTok{(x)}\OperatorTok{/}\KeywordTok{length}\NormalTok{(x))}
+  \KeywordTok{names}\NormalTok{(result)<-}\KeywordTok{c}\NormalTok{(}\StringTok{"N"}\NormalTok{,}\StringTok{"Mean"}\NormalTok{,}\StringTok{"SD"}\NormalTok{,}\StringTok{"SE"}\NormalTok{)}
+  \KeywordTok{return}\NormalTok{(result)}
+\NormalTok{\}}
+\NormalTok{sumstats<-}\KeywordTok{aggregate}\NormalTok{(Score}\OperatorTok{~}\NormalTok{Background}\OperatorTok{*}\NormalTok{Sex,}\DataTypeTok{data=}\NormalTok{ACT,mysummary)}
+\NormalTok{sumstats<-}\KeywordTok{cbind}\NormalTok{(sumstats[,}\DecValTok{1}\OperatorTok{:}\DecValTok{2}\NormalTok{],sumstats[,}\OperatorTok{-}\NormalTok{(}\DecValTok{1}\OperatorTok{:}\DecValTok{2}\NormalTok{)])}
+\NormalTok{sumstats}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   Background    Sex   N      Mean       SD         SE
+## 1          a female  82  9.073171 4.186340 0.05105293
+## 2          b female 387 13.963824 5.000905 0.01292224
+## 3          c female  54 22.629630 4.849806 0.08981122
+## 4          a   male  48 11.458333 5.086312 0.10596483
+## 5          b   male 223 18.565022 4.888305 0.02192065
+## 6          c   male  67 32.432836 5.554752 0.08290675
+\end{verbatim}
+
+With the three levels of background and two levels of sex status, the
+table provides the sample size, mean, standard deviation, and the means
+standard error for each of the 6 combinations of the two factors
+combined. This can be used to take a quick look at the data to see if
+things are making sense. Adding additional summaries like the max, min,
+and quartiles would be heplful as well.
+
+The above table may not be too aesthetically pleasing. Luckily under the
+current format of the table, its quite easy to generate a means profile
+plot to visualize the data. This graphic was most likely a major point
+of discussion during live session.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(ggplot2)}
+\KeywordTok{ggplot}\NormalTok{(sumstats,}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{Background,}\DataTypeTok{y=}\NormalTok{Mean,}\DataTypeTok{group=}\NormalTok{Sex,}\DataTypeTok{colour=}\NormalTok{Sex))}\OperatorTok{+}
+\StringTok{  }\KeywordTok{ylab}\NormalTok{(}\StringTok{"ACT Score"}\NormalTok{)}\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_line}\NormalTok{()}\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_point}\NormalTok{()}\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_errorbar}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{ymin=}\NormalTok{Mean}\OperatorTok{-}\NormalTok{SE,}\DataTypeTok{ymax=}\NormalTok{Mean}\OperatorTok{+}\NormalTok{SE),}\DataTypeTok{width=}\NormalTok{.}\DecValTok{1}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Unit3_HW_files/figure-latex/meanplot-1.pdf}
+
+\textbf{HOMEWORK QUESTION}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  Modify the previous R script so that the summary table also includeds
+  the min, the max, and IQR. These functions are all self
+  explanatory\ldots{}min(x), max(x), IQR(x).
+\item
+  Create another means plot but rather than using the standard errors
+  (SE) to make the error bars. Make it with the raw standard deviations
+  (SD). Which graphic (compared to plot using SE) is more telling about
+  the assumption of equal variances for the ANOVA model? Give a little
+  explanation for your answer.
+\end{enumerate}
+
+\hypertarget{exercise-2-conducting-a-two-way-anova-analysis-in-r}{%
+\subsection{Exercise \#2 Conducting a Two Way ANOVA Analysis in
+R}\label{exercise-2-conducting-a-two-way-anova-analysis-in-r}}
+
+Since Two Way ANOVA's are techically just special cases of multiple
+linear regression, it's not to suprising that the same function call is
+used to build the model. After viewing and exploring the data via
+Exercise 1. The next step would be to fit a full nonaddative model,
+check the assumptions of the model, and then examine the type III sums
+of squares F tables.
+
+The following code fits the nonadditive two way anova model and then
+produces the first the main residual diagnostics for assumption
+checking. The syntax for including interaction terms is slightly
+different so please make note.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{model.fit<-}\KeywordTok{aov}\NormalTok{(Score}\OperatorTok{~}\NormalTok{Background}\OperatorTok{+}\NormalTok{Sex}\OperatorTok{+}\NormalTok{Background}\OperatorTok{:}\NormalTok{Sex,}\DataTypeTok{data=}\NormalTok{ACT)}
+\KeywordTok{par}\NormalTok{(}\DataTypeTok{mfrow=}\KeywordTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{))}
+\KeywordTok{plot}\NormalTok{(model.fit}\OperatorTok{$}\NormalTok{fitted.values,model.fit}\OperatorTok{$}\NormalTok{residuals,}\DataTypeTok{ylab=}\StringTok{"Resdiduals"}\NormalTok{,}\DataTypeTok{xlab=}\StringTok{"Fitted"}\NormalTok{)}
+\KeywordTok{qqnorm}\NormalTok{(model.fit}\OperatorTok{$}\NormalTok{residuals)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Unit3_HW_files/figure-latex/modelfit-1.pdf}
+
+The previous graphics are not very pretty. We can use the ggplot2
+package to jazz things up a bit.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(gridExtra)}
+\NormalTok{myfits<-}\KeywordTok{data.frame}\NormalTok{(}\DataTypeTok{fitted.values=}\NormalTok{model.fit}\OperatorTok{$}\NormalTok{fitted.values,}\DataTypeTok{residuals=}\NormalTok{model.fit}\OperatorTok{$}\NormalTok{residuals)}
+
+\CommentTok{#Residual vs Fitted}
+\NormalTok{plot1<-}\KeywordTok{ggplot}\NormalTok{(myfits,}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{fitted.values,}\DataTypeTok{y=}\NormalTok{residuals))}\OperatorTok{+}\KeywordTok{ylab}\NormalTok{(}\StringTok{"Residuals"}\NormalTok{)}\OperatorTok{+}
+\StringTok{  }\KeywordTok{xlab}\NormalTok{(}\StringTok{"Predicted"}\NormalTok{)}\OperatorTok{+}\KeywordTok{geom_point}\NormalTok{()}
+
+\CommentTok{#QQ plot of residuals  #Note the diagonal abline is only good for qqplots of normal data.}
+\NormalTok{plot2<-}\KeywordTok{ggplot}\NormalTok{(myfits,}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{sample=}\NormalTok{residuals))}\OperatorTok{+}
+\StringTok{  }\KeywordTok{stat_qq}\NormalTok{()}\OperatorTok{+}\KeywordTok{geom_abline}\NormalTok{(}\DataTypeTok{intercept=}\KeywordTok{mean}\NormalTok{(myfits}\OperatorTok{$}\NormalTok{residuals), }\DataTypeTok{slope =} \KeywordTok{sd}\NormalTok{(myfits}\OperatorTok{$}\NormalTok{residuals))}
+
+\CommentTok{#Histogram of residuals}
+\NormalTok{plot3<-}\KeywordTok{ggplot}\NormalTok{(myfits, }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{residuals)) }\OperatorTok{+}\StringTok{ }
+\StringTok{  }\KeywordTok{geom_histogram}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{y=}\NormalTok{..density..),}\DataTypeTok{binwidth=}\DecValTok{1}\NormalTok{,}\DataTypeTok{color=}\StringTok{"black"}\NormalTok{, }\DataTypeTok{fill=}\StringTok{"gray"}\NormalTok{)}\OperatorTok{+}
+\StringTok{  }\KeywordTok{geom_density}\NormalTok{(}\DataTypeTok{alpha=}\NormalTok{.}\DecValTok{1}\NormalTok{, }\DataTypeTok{fill=}\StringTok{"red"}\NormalTok{)}
+
+\KeywordTok{grid.arrange}\NormalTok{(plot1, plot2,plot3, }\DataTypeTok{ncol=}\DecValTok{3}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Unit3_HW_files/figure-latex/unnamed-chunk-1-1.pdf}
+
+As discussed in class, the residual diagnostics do not provide any
+concern about the assumptions of a two way anova analysis. If there
+were, we would have to address those concerns via a transformation of
+the response or multiple analysis with and without outliers, etc.
+Examining the type-III sums of squares F table we have:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(car)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loading required package: carData
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{Anova}\NormalTok{(model.fit,}\DataTypeTok{type=}\DecValTok{3}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Anova Table (Type III tests)
+## 
+## Response: Score
+##                 Sum Sq  Df  F value    Pr(>F)    
+## (Intercept)     6750.4   1 276.4610 < 2.2e-16 ***
+## Background      6007.9   2 123.0263 < 2.2e-16 ***
+## Sex              172.2   1   7.0542  0.008055 ** 
+## Background:Sex   919.0   2  18.8192 1.004e-08 ***
+## Residuals      20876.8 855                       
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+\end{verbatim}
+
+Writing contrasts are a little more cumbersome in R. To help you guys
+out and alleviate the need to keep track of all of the zero's and one's,
+I've wrote a little script that allows you to just specify the contrast
+that you want in a slightly simpler way. But first lets use some tools
+that provides a blanket lists of comparisons. Since there is no
+significant interaction, we just need to examine each factor one at a
+time. To examine all pairwise comparisons for say ``background'', the
+following script provides the t-test results adjusted for multiple tests
+using Tukey's procedure.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{TukeyHSD}\NormalTok{(model.fit,}\StringTok{"Background"}\NormalTok{,}\DataTypeTok{conf.level=}\NormalTok{.}\DecValTok{95}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   Tukey multiple comparisons of means
+##     95% family-wise confidence level
+## 
+## Fit: aov(formula = Score ~ Background + Sex + Background:Sex, data = ACT)
+## 
+## $Background
+##          diff       lwr       upr p adj
+## b-a  5.692055  4.571357  6.812754     0
+## c-a 18.104005 16.638518 19.569492     0
+## c-b 12.411950 11.257405 13.566494     0
+\end{verbatim}
+
+The table is helpful for quickly examining the results and getting the
+p-values and estimates. Its always helpful to visualize.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{plot}\NormalTok{(}\KeywordTok{TukeyHSD}\NormalTok{(model.fit,}\StringTok{"Background"}\NormalTok{,}\DataTypeTok{conf.level=}\NormalTok{.}\DecValTok{95}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Unit3_HW_files/figure-latex/unnamed-chunk-4-1.pdf}
+
+If an interaction is present, you can rinse and repeat the code just
+using the interaction term instead. This code below is for illustration,
+it makes no sense to do this on the ACT data set since the interaction F
+test is not significant.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{TukeyHSD}\NormalTok{(model.fit,}\StringTok{"Background:Sex"}\NormalTok{,}\DataTypeTok{conf.level=}\NormalTok{.}\DecValTok{95}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   Tukey multiple comparisons of means
+##     95% family-wise confidence level
+## 
+## Fit: aov(formula = Score ~ Background + Sex + Background:Sex, data = ACT)
+## 
+## $`Background:Sex`
+##                         diff         lwr       upr     p adj
+## b:female-a:female   4.890654   3.1748785  6.606429 0.0000000
+## c:female-a:female  13.556459  11.0830154 16.029902 0.0000000
+## a:male-a:female     2.385163  -0.1797967  4.950122 0.0854058
+## b:male-a:female     9.491852   7.6691025 11.314601 0.0000000
+## c:male-a:female    23.359665  21.0354027 25.683927 0.0000000
+## c:female-b:female   8.665805   6.6155720 10.716039 0.0000000
+## a:male-b:female    -2.505491  -4.6652479 -0.345734 0.0123022
+## b:male-b:female     4.601198   3.4146282  5.787768 0.0000000
+## c:male-b:female    18.469012  16.6014652 20.336558 0.0000000
+## a:male-c:female   -11.171296 -13.9710443 -8.371548 0.0000000
+## b:male-c:female    -4.064607  -6.2051648 -1.924050 0.0000011
+## c:male-c:female     9.803206   7.2221661 12.384246 0.0000000
+## b:male-a:male       7.106689   4.8610087  9.352369 0.0000000
+## c:male-a:male      20.974502  18.3056335 23.643371 0.0000000
+## c:male-b:male      13.867813  11.9015327 15.834094 0.0000000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{plot}\NormalTok{(}\KeywordTok{TukeyHSD}\NormalTok{(model.fit,}\StringTok{"Background:Sex"}\NormalTok{,}\DataTypeTok{conf.level=}\NormalTok{.}\DecValTok{95}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Unit3_HW_files/figure-latex/unnamed-chunk-5-1.pdf}
+
+As discussed in class, including all possible combinations of
+comparisons may be too much and of little interest to the actual study
+at hand. We can manually create the comparisons of interest and manual
+adjust the p-values through writing contrasts. To help streamline this
+for you guys, I've included a little R script that makes the process a
+little more automated for you.
+
+The following script allow you to write out your contrasts in a more
+verbal syntax. I'll run you through the most tedious scenario. The
+script can be easily modified to handle simpler situations. First things
+first, all you need to do is provide some details as to what comparisons
+you'd like to make. Suppose, that if the interaction was significant,
+the only meaningful comparisons to make in the analysis comparing males
+versus females for each level of background.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(lsmeans) }\CommentTok{#maybe need eemeans package}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loading required package: emmeans
+\end{verbatim}
+
+\begin{verbatim}
+## The 'lsmeans' package is now basically a front end for 'emmeans'.
+## Users are encouraged to switch the rest of the way.
+## See help('transition') for more information, including how to
+## convert old 'lsmeans' objects and scripts to work with 'emmeans'.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{contrast.factor<-}\ErrorTok{~}\NormalTok{Background}\OperatorTok{*}\NormalTok{Sex}
+\NormalTok{mycontrast<-}\KeywordTok{c}\NormalTok{(}\StringTok{"amale-afemale"}\NormalTok{,}\StringTok{"bmale-bfemale"}\NormalTok{,}\StringTok{"cmale-cfemale"}\NormalTok{)}
+\NormalTok{dat<-ACT}
+\end{Highlighting}
+\end{Shaded}
+
+The above piece of code provides no output, but formats things for the
+following code to run. The key player here is the ``contrast.factor''
+and the ``mycontrast'' objects. The contrast.factor piece is just
+specifiying what types of comparisons you would like to make. For
+example, if we only wanted to compare the background levels we would
+have just specified ``\textasciitilde{}Background''. The ``mycontrast''
+object is where you get to specify what comparisons you would like to
+make. For a single factor, you just simply write out the factor levels
+you want to compare with a subtration between them. For an interaction
+type comparison the syntax depends on what was used in the
+contrast.factor object. In our example, background is listed first, so
+when making comparisons the levels of background are concatenated to the
+levels of Sex before subtracting which combinations you want to compare.
+
+The following code is something I wrote that takes the information you
+specified above and creates a clean table of resutls with bonferroni
+adjusted p-values. This script can be reused over and over, just
+changing the initial starting script is all that is required.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{#Running a loop that determines the appropriate 0's and 1's for each }
+\CommentTok{#contrast specified above.}
+\KeywordTok{library}\NormalTok{(limma)}
+\NormalTok{final.result<-}\KeywordTok{c}\NormalTok{()}
+\ControlFlowTok{for}\NormalTok{( j }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(mycontrast))\{}
+\NormalTok{contrast.factor.names<-}\KeywordTok{gsub}\NormalTok{(}\StringTok{" "}\NormalTok{, }\StringTok{""}\NormalTok{, }\KeywordTok{unlist}\NormalTok{(}\KeywordTok{strsplit}\NormalTok{(}\KeywordTok{as.character}\NormalTok{(contrast.factor),}\DataTypeTok{split =} \StringTok{"*"}\NormalTok{, }\DataTypeTok{fixed =}\NormalTok{ T))[}\OperatorTok{-}\DecValTok{1}\NormalTok{])}
+\NormalTok{contrast.factor}\FloatTok{.2}\NormalTok{ <-}\StringTok{ }\KeywordTok{vector}\NormalTok{(}\StringTok{"list"}\NormalTok{, }\KeywordTok{length}\NormalTok{(contrast.factor.names))}
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(contrast.factor.names)) \{}
+\NormalTok{  contrast.factor}\FloatTok{.2}\NormalTok{[[i]] <-}\StringTok{ }\KeywordTok{levels}\NormalTok{(dat[, contrast.factor.names[i]])}
+\NormalTok{\}}
+\NormalTok{new.factor.levels <-}\StringTok{ }\KeywordTok{do.call}\NormalTok{(paste, }\KeywordTok{c}\NormalTok{(}\KeywordTok{do.call}\NormalTok{(expand.grid, }
+\NormalTok{                                              contrast.factor}\FloatTok{.2}\NormalTok{), }\DataTypeTok{sep =} \StringTok{""}\NormalTok{))}
+\NormalTok{temp.cont<-mycontrast[j]}
+\NormalTok{contrast2 <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}\DataTypeTok{comparison =} \KeywordTok{as.vector}\NormalTok{(}\KeywordTok{do.call}\NormalTok{(makeContrasts, }
+                                                \KeywordTok{list}\NormalTok{(}\DataTypeTok{contrasts =}\NormalTok{ temp.cont, }\DataTypeTok{levels =}\NormalTok{ new.factor.levels))))}
+
+\NormalTok{contrast.result <-}\StringTok{ }\KeywordTok{summary}\NormalTok{(}\KeywordTok{contrast}\NormalTok{(}\KeywordTok{lsmeans}\NormalTok{(model.fit, }
+\NormalTok{                                            contrast.factor), contrast2, }\DataTypeTok{by =} \OtherTok{NULL}\NormalTok{))}
+
+\NormalTok{final.result<-}\KeywordTok{rbind}\NormalTok{(final.result,contrast.result)}
+\NormalTok{\}}
+\CommentTok{#Cleaning up and applying bonferroni correction to the number}
+\CommentTok{#of total comparisons investigated.}
+\NormalTok{final.result}\OperatorTok{$}\NormalTok{contrast<-mycontrast}
+\NormalTok{final.result}\OperatorTok{$}\NormalTok{bonf<-}\KeywordTok{length}\NormalTok{(mycontrast)}\OperatorTok{*}\NormalTok{final.result}\OperatorTok{$}\NormalTok{p.value}
+\NormalTok{final.result}\OperatorTok{$}\NormalTok{bonf[final.result}\OperatorTok{$}\NormalTok{bonf}\OperatorTok{>}\DecValTok{1}\NormalTok{]<-}\DecValTok{1}
+
+\NormalTok{final.result}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  contrast      estimate    SE  df t.ratio p.value   bonf
+##  amale-afemale     2.39 0.898 855  2.656  0.0081  0.0242
+##  bmale-bfemale     4.60 0.415 855 11.076  <.0001  0.0000
+##  cmale-cfemale     9.80 0.904 855 10.848  <.0001  0.0000
+\end{verbatim}
+
+\textbf{HOMEWORK QUESTION}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Consider comparing the mean ACT scores of males versus females
+  specifically for background A. Compare the outputs from the Tukey
+  comparison result table to that of the output generated from my manual
+  contrast maker. Is the estimated differences the same? Can you explain
+  why are the adjusted p-values different for the two result tables? One
+  would suggest that we reject the null while the other would have us to
+  fail to reject. (This is just a conceptual thinking question. The
+  interaction term is not significant for this data analysis.)
+\end{enumerate}
+
+\hypertarget{exercise-3}{%
+\subsection{Exercise \#3}\label{exercise-3}}
+
+Lets examine the dta Exercise 13.17 from the statistical sleuth book.
+The data set is easily accesable in R via the following package.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(Sleuth3)}
+\KeywordTok{head}\NormalTok{(ex1317)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   Iridium    Strata DepthCat
+## 1      75 Limestone        1
+## 2     200 Limestone        1
+## 3     120 Limestone        2
+## 4     310 Limestone        2
+## 5     290 Limestone        3
+## 6     450 Limestone        3
+\end{verbatim}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  Provide a means plot of the data. Use this along with any additional
+  information to comment on whether an addative or nonadditive model is
+  probably the most appropriated. If it is not obvious that is okay just
+  do your best.
+\item
+  Fit a nonadditive 2 way anova model to the data set and provide the
+  residual diagnostics. Comment on the appropriateness of the current
+  anova fit.
+\item
+  Provide the type 3 ANOVA F-tests. Answer the following question using
+  the table. Do the potential changes in mean Iridium by strata depend
+  on the depth?
+\item
+  Using multple testing techniques, determine what factors (or
+  combinations) contribute to changes in mean iridium.
+\end{enumerate}
+
+
+\end{document}
