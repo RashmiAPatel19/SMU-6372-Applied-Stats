@@ -92,11 +92,15 @@ lines(seq(1600,5200,1),predict(lm(mpg~weight),newdata=new2),col="red",lwd=4)
   
 ```{r}
 pairs(Auto[,-c(2,9)])
+str(Auto)
 ```
   
 The scatter plot matrix above lets us examine the relationship each predictor has with the response (top row) and the remaining plots allow us to assess multicollinearity.  If we color code the scatterplot matrix additional insight could be gained.  Below is a pairs plot color coded by cylinder.  Here we could visually assess if the relationships we see may depend on what cylinder group the observation belongs too.  If seperate lines with different slopes for each group looks like a better fit, then an interaction could be included to try to capture that level of complexity.
 ```{r}
 pairs(Auto[,-c(2,9)],col=cylinders)
+Auto$cylinders=as.integer(Auto$cylinders)
+Auto$origin=as.integer(Auto$origin)
+corrplot::corrplot(cor(Auto),method="number")
 ```
 
 To obtain the VIFs of each explanatory variable, we just need to run a sigle MLR fit using all the predictors and then make a vif call.  Note: in practice you can manually make decisions to remove redundant variables.  You don't need to live and die by VIF assessments.  The code below provides a clever syntax trick. If your data set has nothing but the response and explanatory variables contained in the data frame and you wish to run a model using all of the predictors then you can use the following shorthand syntax.
@@ -237,6 +241,7 @@ When dealing with only a training data set metrics like AIC and BIC are the most
 First lets simply split the golf data set into training and split and fit a forward selection model on the training data set.
 
 ```{r,echo=T}
+dim(golf)
 set.seed(1234)
 index<-sample(1:dim(golf)[1],100,replace=F)
 train<-golf[index,]
@@ -328,6 +333,73 @@ Set the nvmax to 7 for this problem.
 
 
 5 optional.  What happens when you try to do forward selection using all of the variables in the data set?  Can you potentially give some reasons why warnings/errors start popping up when doing so?  Hint: Using table(train$cylinder,train$origin) maybe helpful among other simple summayr stats and graphics.   
+
+```{r}
+
+
+
+
+
+
+
+str(golf)
+
+# Splitting data
+library(tidyverse)
+head(Auto)
+new.Auto=Auto%>%filter(cylinders!=3)%>%filter(cylinders!=5)
+str(new.Auto)
+dim(new.Auto)
+summary(Auto)
+summary(new.Auto)
+library(caret)
+
+set.seed(1234)
+index<-sample(1:dim(new.Auto)[1],193,replace=F)
+train.data<-new.Auto[index,]
+test.data<-new.Auto[-index,]
+auto.model=regsubsets(log(mpg)~displacement+horsepower+weight+acceleration+year+origin,data=train.data,method="forward",nvmax=7)
+summary(auto.model)$rsq
+predict.regsubsets =function (object , newdata ,id ,...){
+  form=as.formula (object$call [[2]])
+  mat=model.matrix(form ,newdata )
+  coefi=coef(object ,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+
+testASEauto<-c()
+#note my index is to 20 since that what I set it in regsubsets
+for (i in 1:7){
+  predictions<-predict(model,newdata=test.data) 
+  testASEauto[i]<-mean((log(test.data$mpg)-predictions)^2)
+}
+testASEauto
+par(mfrow=c(1,1))
+plot(1:7,testASEauto,type="l",xlab="# of predictors",ylab="test vs train ASE",ylim=c(0,0.2))
+index<-which(testASEauto==min(testASEauto))
+points(index,testASEauto[index],col="red",pch=10)
+rss<-summary(auto.model)$rss
+lines(1:7,rss/193,lty=3,col="blue")  #Dividing by 100 since ASE=RSS/sample size
+dim(train.data)
+# final model
+reg.final=regsubsets(log(mpg)~displacement+horsepower+weight+acceleration+year+origin,data=train.data,method="forward",nvmax=7)
+coef(reg.final,3)
+##  (Intercept)       weight         year      origin3 
+## 1.659606737 -0.000286848  0.029865652  0.082995698 
+
+final.model<-lm(log(mpg)~weight+year+origin,data=new.Auto)
+summary(final.model)
+
+
+plot(exp(final.model$fitted.values),new.Auto$mpg,xlab="Predicted",ylab="mpg",xlim=c(0,100),ylim=c(0,100))
+lines(c(0,100),c(0,100),col="red")
+
+
+
+
+
+```
 ```{r}
 
 set.seed(1234)
@@ -380,71 +452,6 @@ library(tidyverse)
 ggplot(new.Auto,aes(x=))
 
 ```
-```{r}
-
-
-
-
-
-
-
-
-
-# Splitting data
-str(new.Auto)
-new.Auto$cylinders=as.integer(new.Auto$cylinders)
-new.Auto$origin=as.integer(new.Auto$origin)
-new.Auto$mpg=as.integer(new.Auto$mpg)
-new.Auto$displacement=as.integer(new.Auto$displacement)
-new.Auto$horsepower=as.integer(new.Auto$horsepower)
-new.Auto$weight=as.integer(new.Auto$weight)
-new.Auto$acceleration=as.integer(new.Auto$acceleration)
-new.Auto$year=as.integer(new.Auto$year)
-library(tidyverse)
-head(Auto)
-new.Auto=Auto%>%filter(cylinders!=3)%>%filter(cylinders!=5)
-dim(new.Auto)
-library(caret)
-
-
-
-
-
-
-set.seed(1234)
-index<-sample(1:dim(new.Auto)[1],193,replace=F)
-train.data<-new.Auto[index,]
-test.data<-new.Auto[-index,]
-model=lm(log(mpg)~displacement+horsepower+weight+acceleration+year+origin,data=train.data)
-summary(model)
-predictions=predict(model,newdata=test.data)
-predictions
-
-testASE<-c()
-#note my index is to 20 since that what I set it in regsubsets
-for (i in 1:20){
-  predictions<-predict(model,newdata=test.data) 
-  testASE[i]<-mean((log(test.data$mpg)-predictions)^2)
-}
-par(mfrow=c(1,1))
-plot(1:20,testASE,type="l",xlab="# of predictors",ylab="test vs train ASE",ylim=c(0.3,0.8))
-index<-which(testASE==min(testASE))
-points(index,testASE[index],col="red",pch=10)
-rss<-summary(model)$rss
-lines(1:20,rss/193,lty=3,col="blue")  #Dividing by 100 since ASE=RSS/sample size
-dim(train.data)
-
-
-
-
-
-
-plot(1:20,predictions)
-length(model$rss)
-corrplot::corrplot(cor(new.Auto),method="number")
-
-```
-
 ##LASSO calls
 There are no homework questions involving this section but it is here for the sake of your project.  Peforming a lasos call is pretty straight forward.  GLM-NET peforms 10-fold CV to determine an optimal penalty parameter.  The coefficients are easy to extract and making predictions are straight forward.  It is possible to make ASE style plots like we did previously but it takes a little extra programming. See me if interested.
 
