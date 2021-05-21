@@ -1,0 +1,97 @@
+---
+title: "MSDS SMU 6372 Project 1"
+author: "Rashmi Patel"
+date: "5/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Importing required libraries
+```{r}
+#Loading the libraries
+library(tidyverse)
+library(caret)
+library(caTools)
+library(Hmisc)
+library(lattice)
+library(Formula)
+library(survival)
+library(forecast)
+library(corrplot)
+library(car)
+library(ROCR)
+library(Metrics)
+library(VIM)
+library(rpart)       
+library(rpart.plot)  
+library(rattle)
+library(FNN)
+library(knitr)
+library(kableExtra)
+
+```
+## Loading the data
+```{r}
+# Loading the raw data from GitHub
+who.life=read.csv("https://raw.githubusercontent.com/RashmiAPatel19/SMU-6372-Applied-Stats/main/Project1/Life%20Expectancy%20Data.csv", header=TRUE)
+# Looking at the first 10 rows of the data
+head(who.life,10)
+
+```
+## 
+```{r}
+# Checking the dimensions of the dataset
+dim(who.life)
+# Checking the column names of the dataset
+colnames(who.life)
+# Looking at the summary of the dataset
+summary(who.life)
+# Checking for data types of the columns of the dataset
+str(who.life)
+# Checking for number of columns with numeric type
+numeric_var_who=sum(sapply(who.life[,1:22],is.numeric))
+numeric_var_who
+# Checking for number of columns with character type
+char_var_who=sum(sapply(who.life[,1:22],is.character))
+char_var_who
+# Checking for column names with numeric type
+numeric_varname_who=which(sapply(who.life[,1:22],is.numeric))
+numeric_varname_who
+# Checking for column names with character type
+char_varname_who=which(sapply(who.life[,1:22],is.character))
+char_varname_who
+
+```
+## Checking for missing values
+```{r}
+# Checking for missing values
+sum(is.na(who.life))
+# Representing the columns having NA values in a tabular form
+missing_values_who <- colSums(sapply(who.life, is.na))
+missing_values_who<- data.frame(who_Variables = names(missing_values_who), who_NA_Count = missing_values_who); rownames(missing_values_train) <- c()
+missing_values_who<- missing_values_who %>% filter(who_NA_Count > 0)
+kable(missing_values_who, "html") %>%
+  kable_styling(full_width = F)
+length(missing_values_who$who_Variables)
+sum(missing_values_who$who_NA_Count)
+
+# Substitute the NA with 0 in numeric
+who.life1=who.life
+numeric_impute_who <- c("Alcohol","Hepatitis.B","Polio","Total.expenditure","Diphtheria","Life.expectancy","Adult.Mortality",
+                        "thinness..1.19.years","Income.composition.of.resources","Schooling","thinness.5.9.years","BMI","Population","GDP")
+who.life[,numeric_impute_who] <- apply(who.life[,numeric_impute_who], 2, 
+                                            function(x) {
+                                              replace(x, is.na(x),0)
+                                            }
+)
+sum(is.na(who.life$BMI))
+
+```
+
+```{r}
+data=who.life%>%filter(-c("Country"))
+dim(data)
+
+```
