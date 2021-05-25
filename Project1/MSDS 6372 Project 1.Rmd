@@ -30,7 +30,13 @@ library(rattle)
 library(FNN)
 library(knitr)
 library(kableExtra)
-
+library(data.table)
+library(plyr)
+library(DataExplorer)
+library(mlbench)
+library(caret)
+library(olsrr)
+library(MASS)
 ```
 ## Loading the data
 ```{r}
@@ -70,28 +76,154 @@ char_varname_who
 sum(is.na(who.life))
 # Representing the columns having NA values in a tabular form
 missing_values_who <- colSums(sapply(who.life, is.na))
-missing_values_who<- data.frame(who_Variables = names(missing_values_who), who_NA_Count = missing_values_who); rownames(missing_values_train) <- c()
+missing_values_who<- data.frame(who_Variables = names(missing_values_who), who_NA_Count = missing_values_who); rownames(missing_values_who) <- c()
 missing_values_who<- missing_values_who %>% filter(who_NA_Count > 0)
 kable(missing_values_who, "html") %>%
   kable_styling(full_width = F)
 length(missing_values_who$who_Variables)
 sum(missing_values_who$who_NA_Count)
 
-# Substitute the NA with 0 in numeric
-who.life1=who.life
-numeric_impute_who <- c("Alcohol","Hepatitis.B","Polio","Total.expenditure","Diphtheria","Life.expectancy","Adult.Mortality",
-                        "thinness..1.19.years","Income.composition.of.resources","Schooling","thinness.5.9.years","BMI","Population","GDP")
-who.life[,numeric_impute_who] <- apply(who.life[,numeric_impute_who], 2, 
-                                            function(x) {
-                                              replace(x, is.na(x),0)
-                                            }
-)
-sum(is.na(who.life$BMI))
-
+# Imputing the missing values by its median of each columns
+who2=who.life
+for (i in which(sapply(who2, is.numeric))) {
+  who2[is.na(who2[, i]), i] <- median(who2[, i],  na.rm = TRUE)
+}
+#Removing character variable Country and Status
+life=who2[,!names(who2) %in% c("Country","Status")]
+dim(life)
+summary(life$Life.expectancy)
+summary(who.life$Life.expectancy)
 ```
-
+# Looking at the data graphically
 ```{r}
-data=who.life%>%filter(-c("Country"))
-dim(data)
+# Plotting the histogram for data before imputing the median
+plot_histogram(who.life)
+# Plotting the histogram for data after imputing the median
+plot_histogram(life)
+# Correlation Plot
+corrplot(cor(life), method="number" )
+```
+Conclusion: 
+
+* Variables with right skewness
+  ** Adult.Mortality
+  ** Alcohol
+  ** GDP
+  ** HIV.AIDS
+  ** Measles
+  ** percentage.expenditure
+  ** Population
+  ** under.five.deaths
+  ** thinness..1.19.years
+  ** thinness.5.9.years
+  
+* Variables with left skewness
+  ** Diphthearia
+  ** Hepatitis.B
+  ** Polio
+  ** Income.composition.of.resources
+  
+* Variables with normal distribution
+  ** Schooling    
+  ** Life.expectancy
+  ** Total.expenditure
+  ** BMI
+  ** Year  
+
+# EDA
+```{r}
+# Looking at Status=Developing/Developed
+ggplot(who2,aes(x=Status))+geom_bar(position="stack",stat="count",na.rm = TRUE)+
+  theme(axis.text.x = element_text(angle = 90))+geom_text(aes(label=..count..),stat="count",position=position_stack(0.5))
+
+# Looking at life expectancy by Year
+who2 %>%ggplot()+geom_violin(aes(x=Year, y=Life.expectancy, group=Year, fill=Year))
+# not working 
+who2 %>%
+    group_by(Year) %>% 
+    summarize(adultmort=mean(Adult.Mortality),
+             infantmort=mean(infant.deaths)) %>% ggplot()+
+        geom_smooth(aes(x=Year, adultmort), color='blue', se=FALSE)+
+        geom_smooth(aes(x=Year, infantmort), color='red', se=FALSE)
+# Schooling vs Alcohol
+ggplot(who2,aes(x=Schooling,y=Alcohol))+geom_point()
+```
+
+# Basic linear model
+```{r}
+# model with no imputated data
+model1=lm(Life.expectancy~.,data=who.life)
+summary(model1)
+
+# model with imputated data
+model2=lm(Life.expectancy~.,data=who2)
+summary(model2)
+
+# model with no imputation and logged response
+model3=lm(log(Life.expectancy)~.,data=who2)
+summary(model3)
+```
+```{r}
+# Plot for model 1
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model1, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model1), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model1), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+
+# Plot for model 2
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model2, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model2), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model2), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+
+# Plot for model 3
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model3, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model3), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model3), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
 
 ```
+# Varaiable Selection 
+```{r}
+# Forward selection
+forward=stepAIC(model3,direction = "forward")
+forward.model=lm(log(Life.expectancy) ~ Country + Year + Status + Adult.Mortality + 
+    infant.deaths + Alcohol + percentage.expenditure + Hepatitis.B + 
+    Measles + BMI + under.five.deaths + Polio + Total.expenditure + 
+    Diphtheria + HIV.AIDS + GDP + Population + thinness..1.19.years + 
+    thinness.5.9.years + Income.composition.of.resources + Schooling,data=who2)
+summary(forward.model)
+
+# Backward selection
+backward=stepAIC(model3,direction = "backward")
+backward.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infant.deaths + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+    under.five.deaths + Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS + GDP + thinness.5.9.years + Schooling
+,data=who2)
+summary(backward.model)
+
+```
+# Splitting the data in train and test set
+```{r}
+dim(who2)
+train.model=createDataPartition(y=who2$Life.expectancy, p = 0.8, list = FALSE)
+train=who2[train.model,]
+test=who2[-train.model,]
+dim(train)
+dim(test)
+table(is.na(test))
+```
+  
