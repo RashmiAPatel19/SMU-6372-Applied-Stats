@@ -139,12 +139,6 @@ ggplot(who2,aes(x=Status))+geom_bar(position="stack",stat="count",na.rm = TRUE)+
 # Looking at life expectancy by Year
 who2 %>%ggplot()+geom_violin(aes(x=Year, y=Life.expectancy, group=Year, fill=Year))
 # not working 
-who2 %>%
-    group_by(Year) %>% 
-    summarize(adultmort=mean(Adult.Mortality),
-             infantmort=mean(infant.deaths)) %>% ggplot()+
-        geom_smooth(aes(x=Year, adultmort), color='blue', se=FALSE)+
-        geom_smooth(aes(x=Year, infantmort), color='red', se=FALSE)
 # Schooling vs Alcohol
 ggplot(who2,aes(x=Schooling,y=Alcohol))+geom_point()
 ```
@@ -198,6 +192,7 @@ plot(dffits(model3), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS')
 # Varaiable Selection 
 ```{r}
 # Forward selection
+# adj-r2=0.9598 and r2=0.9627
 forward=stepAIC(model3,direction = "forward")
 forward.model=lm(log(Life.expectancy) ~ Country + Year + Status + Adult.Mortality + 
     infant.deaths + Alcohol + percentage.expenditure + Hepatitis.B + 
@@ -207,6 +202,7 @@ forward.model=lm(log(Life.expectancy) ~ Country + Year + Status + Adult.Mortalit
 summary(forward.model)
 
 # Backward selection
+# adj-r2=0.9599 and r2=0.9627
 backward=stepAIC(model3,direction = "backward")
 backward.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infant.deaths + 
     Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
@@ -214,6 +210,65 @@ backward.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infa
     HIV.AIDS + GDP + thinness.5.9.years + Schooling
 ,data=who2)
 summary(backward.model)
+
+# Stepwise selection
+# adj-r2=0.9599 and r2=0.9627
+stepwise=stepAIC(model3,direction="both")
+stepwise.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infant.deaths + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+    under.five.deaths + Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS + GDP + thinness.5.9.years + Schooling,data=who2)
+summary(stepwise.model)
+
+vif(forward.model)
+vif(backward.model)
+vif(stepwise.model)
+# dropping the variables with vif greater than 5 and building model
+dropmodel=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality  + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+     Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS  + thinness.5.9.years + Schooling,data=who2)
+summary(dropmodel)
+# again checking the vif but everthing is below 5
+vif(dropmodel)
+```
+# Test for autocorrelation
+```{r}
+# Looking at the autocorrelation
+library(tseries)
+acf(dropmodel$residuals)
+pacf(dropmodel$residuals)
+# Durbin-Watson Test
+lmtest::dwtest(dropmodel)# DW=1.1781 indicates positive autocorrelation
+```
+
+
+# Histograms for variable selected
+```{r}
+ggplot(who2,aes(x=Year))+geom_histogram()
+
+ggplot(who2,aes(x=Adult.Mortality))+geom_histogram()
+ggplot(who2,aes(x=log(Adult.Mortality)))+geom_histogram()
+ggplot(who2,aes(x=sqrt(Adult.Mortality)))+geom_histogram()
+
+ggplot(who2,aes(x=infant.deaths))+geom_histogram()
+ggplot(who2,aes(x=log(infant.deaths)))+geom_histogram()
+
+ggplot(who2,aes(x=Alcohol))+geom_histogram()
+
+ggplot(who2,aes(x=percentage.expenditure))+geom_histogram()
+ggplot(who2,aes(x=Hepatitis.B))+geom_histogram()
+ggplot(who2,aes(x=Measles))+geom_histogram()
+ggplot(who2,aes(x=under.five.deaths))+geom_histogram()
+ggplot(who2,aes(x=Polio))+geom_histogram()
+ggplot(who2,aes(x=Total.expenditure))+geom_histogram()
+ggplot(who2,aes(x=Diphtheria))+geom_histogram()
+ggplot(who2,aes(x=HIV.AIDS))+geom_histogram()
+ggplot(who2,aes(x=GDP))+geom_histogram()
+ggplot(who2,aes(x=thinness.5.9.years))+geom_histogram()
+ggplot(who2,aes(x=Schooling))+geom_histogram()
+
+
 
 ```
 # Splitting the data in train and test set
@@ -225,5 +280,31 @@ test=who2[-train.model,]
 dim(train)
 dim(test)
 table(is.na(test))
+# adj-r2=0.9589 and r2=0.9626
+train.model=lm(log(Life.expectancy)~.,data=train)
+summary(train.model)
 ```
+# LASSO
+```{r}
+library(glmnet)
+
+set.seed(123)
+control = trainControl(method ="cv", number = 5)
+Grid_la_reg = expand.grid(alpha = 1,
+              lambda = seq(0.001, 0.1, by = 0.0002))
   
+lasso.model <- train(log(Life.expectancy)~., train , method = 'glmnet',trControl = control)
+glm.fit=glm(log(Life.expectancy)~.,data=train)
+#Predict
+attrition.glm.pred <- predict(attrition.glm.model,newdata=attrition.test)
+#Print confusion matrix
+confusionMatrix(
+  table(attrition.test$Attrition, attrition.glm.pred )
+)
+# mean validation score
+mean(lasso.model$resample$RMSE)
+  
+# Plot
+plot(lasso.model, main = "Lasso Regression")
+predict(lasso.model,newdata = test)
+```  
