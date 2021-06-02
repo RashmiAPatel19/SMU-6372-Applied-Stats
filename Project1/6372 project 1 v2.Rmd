@@ -1,0 +1,368 @@
+---
+title: "6372 Project 1 Version 2"
+author: "Rashmi Patel"
+date: "6/1/2021"
+output: html_document
+---
+
+## Importing required libraries
+```{r}
+#Loading the libraries
+library(tidyverse)
+library(caret)
+library(caTools)
+library(Hmisc)
+library(lattice)
+library(Formula)
+library(survival)
+library(forecast)
+library(corrplot)
+library(car)
+library(ROCR)
+library(Metrics)
+library(VIM)
+library(rpart)       
+library(rpart.plot)  
+library(rattle)
+library(FNN)
+library(knitr)
+library(kableExtra)
+library(data.table)
+library(plyr)
+library(DataExplorer)
+library(mlbench)
+library(caret)
+library(olsrr)
+library(MASS)
+library(mice)
+library(lattice)
+library(glmnet)
+library(randomForest)
+```
+## Loading the data
+```{r}
+# Loading the raw data from GitHub
+who.life=read.csv("https://raw.githubusercontent.com/RashmiAPatel19/SMU-6372-Applied-Stats/main/Project1/Life%20Expectancy%20Data.csv", header=TRUE)
+# Looking at the first 10 rows of the data
+head(who.life,10)
+
+```
+## 
+```{r}
+# Checking the dimensions of the dataset
+dim(who.life)
+# Checking the column names of the dataset
+colnames(who.life)
+# Looking at the summary of the dataset
+summary(who.life)
+# Checking for data types of the columns of the dataset
+str(who.life)
+# Checking for number of columns with numeric type
+numeric_var_who=sum(sapply(who.life[,1:22],is.numeric))
+numeric_var_who
+# Checking for number of columns with character type
+char_var_who=sum(sapply(who.life[,1:22],is.character))
+char_var_who
+# Checking for column names with numeric type
+numeric_varname_who=which(sapply(who.life[,1:22],is.numeric))
+numeric_varname_who
+# Checking for column names with character type
+char_varname_who=which(sapply(who.life[,1:22],is.character))
+char_varname_who
+
+```
+## Checking for missing values
+```{r}
+# Checking for missing values
+sum(is.na(who.life))
+# Representing the columns having NA values in a tabular form
+missing_values_who <- colSums(sapply(who.life, is.na))
+missing_values_who<- data.frame(who_Variables = names(missing_values_who), who_NA_Count = missing_values_who); rownames(missing_values_who) <- c()
+missing_values_who<- missing_values_who %>% filter(who_NA_Count > 0)
+kable(missing_values_who, "html") %>%
+  kable_styling(full_width = F)
+length(missing_values_who$who_Variables)
+sum(missing_values_who$who_NA_Count)
+
+# Imputing the missing values by its median of each columns
+who2=who.life
+for (i in which(sapply(who2, is.numeric))) {
+  who2[is.na(who2[, i]), i] <- median(who2[, i],  na.rm = TRUE)
+}
+#Removing character variable Country and Status
+life=who2[,!names(who2) %in% c("Country","Status")]
+dim(life)
+summary(life$Life.expectancy)
+summary(who.life$Life.expectancy)
+
+length(is.na(who2))
+```
+
+# Imputation using multiple predictive mean matching(PMM)
+```{r}
+# Pattern of data having null values
+md.pattern(who.life)
+
+# Imputing the pmm to data with 3 values
+# # imputations are done,default is m=5
+pmm.data=mice(who.life,m=3,method = "cart",seed=101)
+summary(pmm.data)
+# Checking imputed values of sleep variable
+pmm.data$imp$Alcohol
+# Country and status are logged events
+pmm.data$loggedEvents
+# No null values are left after pmm
+sum(is.na(pmm.data))
+# Storing the pmm data as dataframe
+pmm.imp.data=complete(pmm.data)
+# Head of pmm imputed data
+head(pmm.imp.data)
+# Looking at the Country=India for confirmation
+pmm.imp.data%>%filter(Country=="India")
+# Building a regression model using all variables and log(Life.expecatncy)
+pmm.model1=with(data=pmm.imp.data,expr = lm(log(Life.expectancy)~Country+Year+Status+Adult.Mortality+infant.deaths+Alcohol
+                                            +percentage.expenditure+Hepatitis.B+Measles+BMI+under.five.deaths+Polio+Total.expenditure+
+                                            Diphtheria+HIV.AIDS+GDP+Population+thinness..1.19.years+thinness.5.9.years
+                                            +Income.composition.of.resources+Schooling))
+summary(pmm.model1)# Multiple R-squared:  0.9628,	Adjusted R-squared:  0.9599 
+# Building the model using without complete() function data as pool() function dont work with dataframe obtained from complete function()
+
+pmm.model2=with(data=pmm.data,expr = lm(log(Life.expectancy)~Country+Year+Status+Adult.Mortality+infant.deaths+Alcohol
+                                            +percentage.expenditure+Hepatitis.B+Measles+BMI+under.five.deaths+Polio+Total.expenditure+
+                                            Diphtheria+HIV.AIDS+GDP+Population+thinness..1.19.years+thinness.5.9.years
+                                            +Income.composition.of.resources+Schooling))
+
+# pool() function combines all the results obtained from 3 models
+summary(pool(pmm.model2))
+summary(pmm.model2)
+
+```
+# EDA EDA EDA
+```{r}
+# Correlation plot
+life=pmm.imp.data[,!names(who2) %in% c("Country","Status")]
+dim(life)
+round(cor(life),2)
+corrplot(cor(pmm.imp.data[,-c(1:3)]), method="number", type="upper" )
+# Histogram for all numeric variables before imputation
+plot_histogram(who.life)
+# Histogram for all numeric variables after imputation
+plot_histogram(pmm.imp.data)
+# Life Expectancy VS year by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=Year,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS GDP by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=GDP,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Population VS GDP by Status
+ggplot(pmm.imp.data,aes(y=Population,x=GDP,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS BMI by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=BMI,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS Alcohol by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=Alcohol,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS GDP by Status
+ggplot(pmm.imp.data,aes(y=infant.deaths,x=under.five.deaths,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+
+```
+# Split the dataset in Train and Test set
+```{r}
+train.model=createDataPartition(y=pmm.imp.data$Life.expectancy, p = 0.8, list = FALSE)
+train=who2[train.model,]
+test=who2[-train.model,]
+dim(train)
+dim(test)
+table(is.na(test))
+# Multiple R-squared:  0.9661,	Adjusted R-squared:  0.9628 
+train.model=lm(log(Life.expectancy)~.,data=train)
+summary(train.model)
+
+```
+# Basic linear model
+```{r}
+# model with no imputated data
+model1=lm(Life.expectancy~.,data=train)
+summary(model1)
+# Plot for model 1
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model1, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model1), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model1), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+```
+```{r}
+# model with imputated data
+model2=lm(Life.expectancy~.,data=train)
+summary(model2)
+# Plot for model 2
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model2, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model2), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model2), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+
+```
+```{r}
+# model with no imputation and logged response
+model3=lm(log(Life.expectancy)~.,data=train)
+summary(model3)
+# Plot for model 3
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model3, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model3), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model3), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+
+
+```
+# Varaiable Selection 
+
+## Forward Selection
+```{r}
+# Forward selection
+# Multiple R-squared:  0.9521,	Adjusted R-squared:  0.9486 
+forward=stepAIC(model3,direction = "forward")
+forward.model=lm(log(Life.expectancy) ~ Country   +  Alcohol   + 
+    Measles + BMI  + Polio  + 
+    Diphtheria + HIV.AIDS    + 
+      Schooling,data=who2)
+summary(forward.model)
+```
+## Backward Selection
+```{r}
+# Backward selection
+#Multiple R-squared:  0.9627,	Adjusted R-squared:  0.9599 
+backward=stepAIC(model3,direction = "backward")
+backward.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infant.deaths + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+    under.five.deaths + Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS + GDP + thinness.5.9.years + Schooling
+,data=who2)
+summary(backward.model)
+```
+## Stepwise Selection
+```{r}
+# Stepwise selection
+# Multiple R-squared:  0.9627,	Adjusted R-squared:  0.9599 
+stepwise=stepAIC(model3,direction="both")
+stepwise.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infant.deaths + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+    under.five.deaths + Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS + GDP + thinness.5.9.years + Schooling,data=who2)
+summary(stepwise.model)
+
+vif(backward.model)
+vif(stepwise.model)
+# dropping the variables with vif greater than 5 and building model
+dropmodel=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality  + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+     Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS  + thinness.5.9.years + Schooling,data=who2)
+summary(dropmodel)
+# again checking the vif but everthing is below 5
+vif(dropmodel)
+```
+
+# LASSO
+```{r}
+#Formatting data for GLM net
+x=model.matrix(log(Life.expectancy)~.,train)[,-1]
+y=log(train$Life.expectancy)
+
+xtest<-model.matrix(log(Life.expectancy)~.,test)[,-1]
+ytest<-log(test$Life.expectancy)
+
+
+
+grid=10^seq(10,-2, length =100)
+lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+
+cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+plot(cv.out)
+bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
+lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
+
+testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+testMSE_LASSO
+```
+# Non-parametric algorithms:
+
+## Random Forest
+
+```{r}
+library(ggRandomForests)
+who.rf=randomForest(log(Life.expectancy)~.,data=train,importance=TRUE)
+plot(gg_vimp(who.rf))
+varImpPlot(who.rf)
+sort(importance(who.rf)[,1],decreasing = TRUE)
+
+# Var explained: 66.94
+rf.model1=randomForest(log(Life.expectancy)~HIV.AIDS,data=train)
+rf.model1
+#Var explained: 77.04
+rf.model2=randomForest(log(Life.expectancy)~Adult.Mortality,data=train)
+rf.model2
+# Var explained: 90.08
+rf.model3=randomForest(log(Life.expectancy)~Country,data=train)
+rf.model3
+# Var explained: 63.29
+rf.model4=randomForest(log(Life.expectancy)~Income.composition.of.resources ,data=train)
+rf.model4
+# Var explained: 38.82
+rf.model5=randomForest(log(Life.expectancy)~thinness.5.9.years ,data=train)
+rf.model5
+# Var explained: 89.26
+rf.model6=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality,data=train)
+rf.model6
+# Var explained: 94.05
+rf.model7=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Income.composition.of.resources,data=train)
+rf.model7
+# Var explained: 94.9
+rf.model8=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources
+                         ,data=train)
+rf.model8
+# Var explained: 95.33
+rf.model9=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years,data=train)
+rf.model9
+# Var explained: 96.31
+rf.model10=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years,data=train)
+rf.model10
+# Var explained: 96.24
+rf.model11=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+Year,data=train)
+rf.model11
+# Var explained: 96.09
+rf.model12=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+Year+Alcohol,data=train)
+rf.model12
+# Var explained: 96.57
+rf.model13=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+infant.deaths,data=train)
+rf.model13
+# Var explained: 96.2
+rf.model14=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+under.five.deaths+BMI+Schooling,data=train)
+rf.model14
+
+# Error Rate plot for model 13
+plot(rf.model13)
+
+```
+
+```{r}
+rf.predict=predict(rf.model13,newdata=test)
+pred.val=data.frame(Life.expectancy.test=log(test$Life.expectancy),Predicted=rf.predict,Year=test$Year)
+pred.val
+
+hist(pred.val$Life.expectancy.test,col="red")
+hist(pred.val$Predicted,col="blue",add=T)
+box()
+```

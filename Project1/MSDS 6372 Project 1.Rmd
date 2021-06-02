@@ -194,11 +194,10 @@ plot(dffits(model3), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS')
 # Forward selection
 # adj-r2=0.9598 and r2=0.9627
 forward=stepAIC(model3,direction = "forward")
-forward.model=lm(log(Life.expectancy) ~ Country + Year + Status + Adult.Mortality + 
-    infant.deaths + Alcohol + percentage.expenditure + Hepatitis.B + 
-    Measles + BMI + under.five.deaths + Polio + Total.expenditure + 
-    Diphtheria + HIV.AIDS + GDP + Population + thinness..1.19.years + 
-    thinness.5.9.years + Income.composition.of.resources + Schooling,data=who2)
+forward.model=lm(log(Life.expectancy) ~ Country   +  Alcohol   + 
+    Measles + BMI  + Polio  + 
+    Diphtheria + HIV.AIDS    + 
+      Schooling,data=who2)
 summary(forward.model)
 
 # Backward selection
@@ -220,7 +219,6 @@ stepwise.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infa
     HIV.AIDS + GDP + thinness.5.9.years + Schooling,data=who2)
 summary(stepwise.model)
 
-vif(forward.model)
 vif(backward.model)
 vif(stepwise.model)
 # dropping the variables with vif greater than 5 and building model
@@ -296,7 +294,7 @@ Grid_la_reg = expand.grid(alpha = 1,
 lasso.model <- train(log(Life.expectancy)~., train , method = 'glmnet',trControl = control)
 glm.fit=glm(log(Life.expectancy)~.,data=train)
 #Predict
-attrition.glm.pred <- predict(attrition.glm.model,newdata=attrition.test)
+attrition.glm.pred <- predict(glm.fit,newdata=test)
 #Print confusion matrix
 confusionMatrix(
   table(attrition.test$Attrition, attrition.glm.pred )
