@@ -1,0 +1,676 @@
+---
+title: '6372 Project 1 '
+author: "Rashmi Patel"
+date: "5/26/2021"
+output: word_document
+---
+# 6372 Applied Statistics and Inference Project 1
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Importing required libraries
+```{r}
+#Loading the libraries
+library(tidyverse)
+library(caret)
+library(caTools)
+library(Hmisc)
+library(lattice)
+library(Formula)
+library(survival)
+library(forecast)
+library(corrplot)
+library(car)
+library(ROCR)
+library(Metrics)
+library(VIM)
+library(rpart)       
+library(rpart.plot)  
+library(rattle)
+library(FNN)
+library(knitr)
+library(kableExtra)
+library(data.table)
+library(plyr)
+library(DataExplorer)
+library(mlbench)
+library(caret)
+library(olsrr)
+library(MASS)
+library(mice)
+library(lattice)
+library(glmnet)
+library(randomForest)
+```
+## Loading the data
+```{r}
+# Loading the raw data from GitHub
+who.life=read.csv("https://raw.githubusercontent.com/RashmiAPatel19/SMU-6372-Applied-Stats/main/Project1/Life%20Expectancy%20Data.csv", header=TRUE)
+# Looking at the first 10 rows of the data
+head(who.life,10)
+
+```
+## Summary of Data
+```{r}
+# Checking the dimensions of the dataset
+dim(who.life)
+# Checking the column names of the dataset
+colnames(who.life)
+# Looking at the summary of the dataset
+summary(who.life)
+# Checking for data types of the columns of the dataset
+str(who.life)
+# Checking for number of columns with numeric type
+numeric_var_who=sum(sapply(who.life[,1:22],is.numeric))
+numeric_var_who
+# Checking for number of columns with character type
+char_var_who=sum(sapply(who.life[,1:22],is.character))
+char_var_who
+# Checking for column names with numeric type
+numeric_varname_who=which(sapply(who.life[,1:22],is.numeric))
+numeric_varname_who
+# Checking for column names with character type
+char_varname_who=which(sapply(who.life[,1:22],is.character))
+char_varname_who
+
+```
+
+* The data has 22 variables and 2983 entries. 
+* The data has 2 character variable: Country and Status and remaining 20 variables are numeric variables.
+
+## Checking for missing values
+```{r}
+# Checking for missing values
+sum(is.na(who.life))
+# Representing the columns having NA values in a tabular form
+missing_values_who <- colSums(sapply(who.life, is.na))
+missing_values_who<- data.frame(who_Variables = names(missing_values_who), who_NA_Count = missing_values_who); rownames(missing_values_who) <- c()
+missing_values_who<- missing_values_who %>% filter(who_NA_Count > 0)
+kable(missing_values_who, "html") %>%
+  kable_styling(full_width = F)
+length(missing_values_who$who_Variables)
+sum(missing_values_who$who_NA_Count)
+
+# Imputing the missing values by its median of each columns
+who2=who.life
+for (i in which(sapply(who2, is.numeric))) {
+  who2[is.na(who2[, i]), i] <- median(who2[, i],  na.rm = TRUE)
+}
+#Removing character variable Country and Status
+life=who2[,!names(who2) %in% c("Country","Status")]
+dim(life)
+
+length(is.na(who2))
+```
+
+* There are total 64636 different values in all variables in which 2563 values are null values i.e 3.96%. So imputing the missing values are good option instead of removing the values.
+
+# Imputation using multiple predictive mean matching(PMM)
+```{r}
+# Pattern of data having null values
+md.pattern(who.life)
+
+# Imputing the pmm to data with 3 values
+# # imputations are done,default is m=5
+pmm.data=mice(who.life,method = "cart",seed=101)
+summary(pmm.data)
+# desnity Plot showing performance of imputation for missing values.
+densityplot(pmm.data)
+# Checking imputed values of sleep variable
+pmm.data$imp$Alcohol
+# Country and status are logged events
+pmm.data$loggedEvents
+# No null values are left after pmm
+sum(is.na(pmm.data))
+# Storing the pmm data as dataframe
+pmm.imp.data=complete(pmm.data)
+# Head of pmm imputed data
+head(pmm.imp.data)
+# Looking at the Country=India for confirmation
+pmm.imp.data%>%filter(Country=="India")
+# Building a regression model using all variables and log(Life.expecatncy)
+pmm.model1=with(data=pmm.imp.data,expr = lm(log(Life.expectancy)~Country+Year+Status+Adult.Mortality+infant.deaths+Alcohol
+                                            +percentage.expenditure+Hepatitis.B+Measles+BMI+under.five.deaths+Polio+Total.expenditure+
+                                            Diphtheria+HIV.AIDS+GDP+Population+thinness..1.19.years+thinness.5.9.years
+                                            +Income.composition.of.resources+Schooling))
+summary(pmm.model1)# Multiple R-squared:  0.9628,	Adjusted R-squared:  0.9599 
+# Building the model using without complete() function data as pool() function dont work with dataframe obtained from complete function()
+
+pmm.model2=with(data=pmm.data,expr = lm(log(Life.expectancy)~Country+Year+Status+Adult.Mortality+infant.deaths+Alcohol
+                                            +percentage.expenditure+Hepatitis.B+Measles+BMI+under.five.deaths+Polio+Total.expenditure+
+                                            Diphtheria+HIV.AIDS+GDP+Population+thinness..1.19.years+thinness.5.9.years
+                                            +Income.composition.of.resources+Schooling))
+
+# pool() function combines all the results obtained from 3 models
+summary(pool(pmm.model2))
+summary(pmm.model2)
+
+```
+# EDA EDA EDA
+```{r}
+# Correlation plot
+life=pmm.imp.data[,!names(who2) %in% c("Country","Status")]
+dim(life)
+round(cor(life),2)
+corrplot(cor(pmm.imp.data[,-c(1:3)]), method="number", type="upper" )
+# Histogram for all numeric variables before imputation
+plot_histogram(who.life)
+# Histogram for all numeric variables after imputation
+plot_histogram(pmm.imp.data)
+# Life Expectancy VS year by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=Year,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS GDP by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=GDP,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Population VS GDP by Status
+ggplot(pmm.imp.data,aes(y=Population,x=GDP,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS BMI by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=BMI,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS Alcohol by Status
+ggplot(pmm.imp.data,aes(y=Life.expectancy,x=Alcohol,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS GDP by Status
+ggplot(pmm.imp.data,aes(y=infant.deaths,x=under.five.deaths,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS GDP by Status
+ggplot(pmm.imp.data,aes(y=infant.deaths,x=under.five.deaths,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS GDP by Status
+ggplot(pmm.imp.data,aes(y=infant.deaths,x=under.five.deaths,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# Life Expectancy VS GDP by Status
+ggplot(pmm.imp.data,aes(y=infant.deaths,x=under.five.deaths,col=Status))+geom_point()+facet_grid(rows = vars(Status))
+# density plot for numeric variables
+plot_density(pmm.imp.data)
+```
+
+Conclusion: 
+
+* Variables with right skewness
+  ** Adult.Mortality
+  ** Alcohol
+  ** GDP
+  ** HIV.AIDS
+  ** Measles
+  ** percentage.expenditure
+  ** Population
+  ** under.five.deaths
+  ** thinness..1.19.years
+  ** thinness.5.9.years
+  
+* Variables with left skewness
+  ** Diphthearia
+  ** Hepatitis.B
+  ** Polio
+  ** Income.composition.of.resources
+  
+* Variables with normal distribution
+  ** Schooling    
+  ** Life.expectancy
+  ** Total.expenditure
+  ** BMI
+  ** Year
+  
+  
+# Graphs with Life expectancy as response and other variables as explanatory
+```{r}
+# Graphs before imputation
+ggplot(who.life,aes(x=Status,y=Life.expectancy,col=Status))+geom_point()+labs(xlab="Status",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Status before imputation")
+
+ggplot(who.life,aes(x=Year,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab="Year",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Year by Status before imputation")
+
+ggplot(who.life,aes(x=Adult.Mortality,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab="Adult.Mortality",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Adult Mortality by Status before imputation")
+
+ggplot(who.life,aes(x=infant.deaths,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab="Infant Mortality",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Infant Mortality by Status before imputation")
+
+ggplot(who.life,aes(x=Alcohol,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab="Alcohol",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Alcohol by Status before imputation")
+
+ggplot(who.life,aes(x=percentage.expenditure,y=Life.expectancy,col=Status))+geom_point()+
+  facet_grid(rows=vars(Status))+labs(xlab="Percentage Expenditure",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Percentage Expenditure by Status before imputation")
+
+ggplot(who.life,aes(x=Hepatitis.B,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Hepatitis B",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Hepatitis B by Status before imputation")
+
+ggplot(who.life,aes(x=Measles,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab=" Measles",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Measles by Status before imputation")
+
+ggplot(who.life,aes(x=BMI,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+labs(xlab="BMI",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. BMI by Status before imputation")
+
+ggplot(who.life,aes(x=under.five.deaths,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab="Under five deaths",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Under five deaths by Status before imputation")
+
+ggplot(who.life,aes(x=Polio,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab="Polio",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Polio by Status before imputation")
+
+ggplot(who.life,aes(x=Total.expenditure,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Total Expenditure",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Total Expenditure by Status before imputation")
+
+ggplot(who.life,aes(x=Diphtheria,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Diphtheria",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Diphtheria by Status before imputation")
+
+ggplot(who.life,aes(x=HIV.AIDS,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="HIV AIDS",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. HIV AIDS by Status before imputation")
+
+ggplot(who.life,aes(x=GDP,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="GDP",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. GDP by Status before imputation")
+
+ggplot(who.life,aes(x=Population,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Population",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Population by Status before imputation")
+
+ggplot(who.life,aes(x=thinness..1.19.years,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Thinnes from 1 to 19 years",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Thinness from 1 to 19 Years by Status before imputation")
+
+ggplot(who.life,aes(x=thinness.5.9.years,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Thinness from 5 to 9 years",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Thinness from 5 to years by Status before imputation")
+
+ggplot(who.life,aes(x=Income.composition.of.resources,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Income composition if resources",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Income composition of resources by Status before imputation")
+
+ggplot(who.life,aes(x=Schooling,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Schooling",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Schooling by Status before imputation")
+
+```
+
+```{r}
+# Graphs after imputation
+
+ggplot(pmm.imp.data,aes(x=Status,y=Life.expectancy,col=Status))+geom_point()+
+  labs(xlab="Status",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Year,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+  labs(xlab="Year",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Year by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Adult.Mortality,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Adult Mortality",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Adult Mortality by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=infant.deaths,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Imfant Mortality",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Infant Mortality by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Alcohol,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Alcohol",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Alcohol by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=percentage.expenditure,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Percenatge Expenditure",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Percentage Expenditure by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Hepatitis.B,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Hepatitis B",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Hepatitis B by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Measles,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Measles",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Measles by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=BMI,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="BMI",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. BMI by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=under.five.deaths,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Under five deaths",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Under five deaths by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Polio,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Polio",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Polio by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Total.expenditure,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Total Expenditure",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Total Expenditure by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Diphtheria,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Diphtheria",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Diphtheria by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=HIV.AIDS,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="HIV AIDS",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. HIV AIDS by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=GDP,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="GDP",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. GDP by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Population,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Population",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Population by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=thinness..1.19.years,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Thinness from 1 to 19 Years",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Thinness from 1 to 19 years by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=thinness.5.9.years,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Thinness from 5 to 9 years",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Thinness from 5 to 9 Years by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Income.composition.of.resources,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Income composition of resources",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Income composition of resources by Status after imputation")
+
+ggplot(pmm.imp.data,aes(x=Schooling,y=Life.expectancy,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+ labs(xlab="Schooling",ylab="Life Expectancy")+ggtitle("Graph for Life.expectancy vs. Schooling by Status after imputation")
+
+
+
+```
+```{r}
+ggplot(pmm.imp.data,aes(Life.expectancy))+geom_density(col="blue")+geom_density(aes(who.life$Life.expectancy,col="red"))
+ggplot(pmm.imp.data,aes(Adult.Mortality))+geom_density(col="blue")+geom_density(aes(who.life$Adult.Mortality,col="red"))
+ggplot(pmm.imp.data,aes(infant.deaths))+geom_density(col="blue")+geom_density(aes(who.life$infant.deaths,col="red"))
+ggplot(pmm.imp.data,aes(Alcohol))+geom_density(col="blue")+geom_density(aes(who.life$Alcohol,col="red"))
+ggplot(pmm.imp.data,aes(percentage.expenditure))+geom_density(col="blue")+geom_density(aes(who.life$percentage.expenditure,col="red"))
+ggplot(pmm.imp.data,aes(Hepatitis.B))+geom_density(col="blue")+geom_density(aes(who.life$Hepatitis.B,col="red"))
+ggplot(pmm.imp.data,aes(Measles))+geom_density(col="blue")+geom_density(aes(who.life$Measles,col="red"))
+ggplot(pmm.imp.data,aes(BMI))+geom_density(col="blue")+geom_density(aes(who.life$BMI,col="red"))
+ggplot(pmm.imp.data,aes(under.five.deaths))+geom_density(col="blue")+geom_density(aes(who.life$under.five.deaths,col="red"))
+ggplot(pmm.imp.data,aes(Polio))+geom_density(col="blue")+geom_density(aes(who.life$Polio,col="red"))
+ggplot(pmm.imp.data,aes(Total.expenditure))+geom_density(col="blue")+geom_density(aes(who.life$Total.expenditure,col="red"))
+ggplot(pmm.imp.data,aes(Diphtheria))+geom_density(col="blue")+geom_density(aes(who.life$Diphtheria,col="red"))
+ggplot(pmm.imp.data,aes(HIV.AIDS))+geom_density(col="blue")+geom_density(aes(who.life$HIV.AIDS,col="red"))
+ggplot(pmm.imp.data,aes(GDP))+geom_density(col="blue")+geom_density(aes(who.life$GDP,col="red"))
+ggplot(pmm.imp.data,aes(Population))+geom_density(col="blue")+geom_density(aes(who.life$Population,col="red"))
+ggplot(pmm.imp.data,aes(thinness..1.19.years))+geom_density(col="blue")+geom_density(aes(who.life$thinness..1.19.years,col="red"))
+ggplot(pmm.imp.data,aes(thinness.5.9.years))+geom_density(col="blue")+geom_density(aes(who.life$thinness.5.9.years,col="red"))
+ggplot(pmm.imp.data,aes(Income.composition.of.resources))+geom_density(col="blue")+geom_density(aes(who.life$Income.composition.of.resources,col="red"))
+ggplot(pmm.imp.data,aes(Schooling))+geom_density(col="blue")+geom_density(aes(who.life$Schooling,col="red"))
+```
+# Graph for variables with respect to country
+```{r}
+country.means=read.csv("https://raw.githubusercontent.com/RashmiAPatel19/SMU-6372-Applied-Stats/main/Project1/Country-Means-dB.csv"
+                       ,header=TRUE)
+head(country.means)
+
+# Graph for average GDP of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-GDP.mean),y=GDP.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average GDP")+ggtitle("Graph for average GDP of each Country")
+  
+country.means%>%dplyr::select(Country,GDP.mean)%>%arrange(desc(GDP.mean))
+
+# Graph for average Life Expectancy of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Life.expectancy.mean),y=Life.expectancy.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Life Expectancy")+ggtitle("Graph for average Life Expectancy of each Country")
+  
+country.means%>%dplyr::select(Country,Life.expectancy.mean)%>%arrange(desc(Life.expectancy.mean))
+
+# Graph for average Adult Mortality of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Adult.Mortality.mean),y=Adult.Mortality.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Adult Mortality")+ggtitle("Graph for average Adult Mortality of each Country")
+  
+country.means%>%dplyr::select(Country,Adult.Mortality.mean)%>%arrange(desc(Adult.Mortality.mean))
+
+# Graph for average Hepatitis B of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Hepatitis.B.mean),y=Hepatitis.B.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Hepatitis.B")+ggtitle("Graph for average Hepatitis B of each Country")
+  
+country.means%>%dplyr::select(Country,Hepatitis.B.mean)%>%arrange(desc(Hepatitis.B.mean))
+
+# Graph for average HIV AIDS of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-HIV.AIDS.mean),y=HIV.AIDS.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average HIV AIDS")+ggtitle("Graph for average HIV AIDS of each Country")
+  
+country.means%>%dplyr::select(Country,HIV.AIDS.mean)%>%arrange(desc(HIV.AIDS.mean))
+
+# Graph for average Income composition of resources of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Income.composition.of.resources.mean),y=Income.composition.of.resources.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Income composition of resources")+ggtitle("Graph for average Income composition of resources of each Country")
+  
+country.means%>%dplyr::select(Country,Income.composition.of.resources.mean)%>%arrange(desc(Income.composition.of.resources.mean))
+
+# Graph for average Income composition of resources of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-infant.deaths.mean),y=infant.deaths.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Infant Deaths")+ggtitle("Graph for average Infant Deaths of each Country")
+  
+country.means%>%dplyr::select(Country,infant.deaths.mean)%>%arrange(desc(infant.deaths.mean))
+
+# Graph for average Measles of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Measles.mean),y=Measles.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Measles")+ggtitle("Graph for average Measles of each Country")
+  
+country.means%>%dplyr::select(Country,Measles.mean)%>%arrange(desc(Measles.mean))
+
+# Graph for average Total Expenditure of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Total.expenditure.mean),y=Total.expenditure.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Total Expenditure")+ggtitle("Graph for average total expenditure of each Country")
+  
+country.means%>%dplyr::select(Country,Total.expenditure.mean)%>%arrange(desc(Total.expenditure.mean))
+
+# Graph for average percentage Expenditure of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-percentage.expenditure.mean),y=percentage.expenditure.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Percenatge Expenditure")+ggtitle("Graph for average Percentage expenditure of each Country")
+  
+country.means%>%dplyr::select(Country,percentage.expenditure.mean)%>%arrange(desc(percentage.expenditure.mean))
+
+# Graph for average Population of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Population.mean),y=Population.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Population")+ggtitle("Graph for average population of each Country")
+  
+country.means%>%dplyr::select(Country,Population.mean)%>%arrange(desc(Population.mean))
+
+# Graph for average Schooling of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-Schooling.mean),y=Schooling.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Schooling")+ggtitle("Graph for average schooling of each Country")
+  
+country.means%>%dplyr::select(Country,Schooling.mean)%>%arrange(desc(Schooling.mean))
+
+# Graph for average Thinness from 1 to 19 years of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-thinness..1.19.years.mean),y=thinness..1.19.years.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Thinness from 1 to 19 years")+ggtitle("Graph for average thinness from 1 to 19 years of each Country")
+  
+country.means%>%dplyr::select(Country,thinness..1.19.years.mean)%>%arrange(desc(thinness..1.19.years.mean))
+
+# Graph for average Thinness from 5 to 9 years of each Country
+ggplot(country.means,aes(x=reorder(as.factor(Country),-thinness.5.9.years.mean),y=thinness.5.9.years.mean))+geom_col(fill="sky blue",col="black")+
+   theme(axis.text.x = element_text(angle = 90))+
+   labs(x="Country",y="Average Thinness from 5 to 9 years")+ggtitle("Graph for average thinness from 5 to 9 years of each Country")
+  
+country.means%>%dplyr::select(Country,thinness.5.9.years.mean)%>%arrange(desc(thinness.5.9.years.mean))
+
+```
+
+# Graphs with mixed variables
+```{r}
+ggplot(pmm.imp.data,aes(x=Schooling,y=Alcohol,col=Status))+geom_point()+facet_grid(rows=vars(Status))+ labs(xlab="Schooling",y="Alcohol")+ggtitle("Graph for Schooling vs Alcohol by Status with imputation")
+
+ggplot(pmm.imp.data,aes(y=Adult.Mortality,x=Alcohol,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Adult Mortality",y="Alcohol")+ggtitle("Graph for Adult Mortality vs Alcohol by Status with imputation")
+
+ggplot(pmm.imp.data,aes(y=Adult.Mortality,x=HIV.AIDS,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Adult Mortality",y="HIV.AIDS")+ggtitle("Graph for Adult Mortality vs HIV AIDS by Status with imputation")
+
+ggplot(pmm.imp.data,aes(x=Population,y=GDP,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Population",y="GDP")+ggtitle("Graph for Population vs GDP by Status with imputation")
+
+ggplot(pmm.imp.data,aes(x=BMI,y=Adult.Mortality,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="BMI",y="Adult Mortality")+ggtitle("Graph for BMI vs Adult Mortality by Status with imputation")
+
+ggplot(pmm.imp.data,aes(x=Hepatitis.B,y=Adult.Mortality,col=Status))+geom_point()+facet_grid(rows=vars(Status))+
+   labs(xlab="Hepatitis B",y="Adult Mortality")+ggtitle("Graph for Hepatitis B vs Adult Mortality by Status with imputation")
+
+
+
+```
+# Split the dataset in Train and Test set
+```{r}
+train.model=createDataPartition(y=pmm.imp.data$Life.expectancy, p = 0.8, list = FALSE)
+train=who2[train.model,]
+test=who2[-train.model,]
+dim(train)
+dim(test)
+table(is.na(test))
+# Multiple R-squared:  0.9661,	Adjusted R-squared:  0.9628 
+train.model=lm(log(Life.expectancy)~.,data=train)
+summary(train.model)
+
+```
+# Basic linear model
+```{r}
+# model with no imputated data
+model1=lm(Life.expectancy~.,data=train)
+summary(model1)
+# Plot for model 1
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model1, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model1), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model1), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+```
+```{r}
+# model with imputated data
+model2=lm(Life.expectancy~.,data=train)
+summary(model2)
+# Plot for model 2
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model2, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model2), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model2), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+
+```
+```{r}
+# model with no imputation and logged response
+model3=lm(log(Life.expectancy)~.,data=train)
+summary(model3)
+# Plot for model 3
+par(mfrow=c(2,3))
+#Plot includes residuals and Standardized residuals vs fitted values, QQ plot
+plot(model3, bg = 'blue', pch=23) 
+#Plot cook's distance to detect outliers
+plot(cooks.distance(model3), pch=23, bg='maroon', ylab="Cook's distance", 
+     main = "Cook's Distance")
+#Plot DFFITS to detect outliers
+plot(dffits(model3), pch=23, bg='blue', ylab = 'DFFITS', main = 'DFFITS') 
+
+
+```
+# Varaiable Selection 
+
+## Forward Selection
+```{r}
+# Forward selection
+# Multiple R-squared:  0.9521,	Adjusted R-squared:  0.9486 
+forward=stepAIC(model3,direction = "forward")
+forward.model=lm(log(Life.expectancy) ~ Country   +  Alcohol   + 
+    Measles + BMI  + Polio  + 
+    Diphtheria + HIV.AIDS    + 
+      Schooling,data=who2)
+summary(forward.model)
+```
+## Backward Selection
+```{r}
+# Backward selection
+#Multiple R-squared:  0.9627,	Adjusted R-squared:  0.9599 
+backward=stepAIC(model3,direction = "backward")
+backward.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infant.deaths + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+    under.five.deaths + Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS + GDP + thinness.5.9.years + Schooling
+,data=who2)
+summary(backward.model)
+```
+## Stepwise Selection
+```{r}
+# Stepwise selection
+# Multiple R-squared:  0.9627,	Adjusted R-squared:  0.9599 
+stepwise=stepAIC(model3,direction="both")
+stepwise.model=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality + infant.deaths + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+    under.five.deaths + Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS + GDP + thinness.5.9.years + Schooling,data=who2)
+summary(stepwise.model)
+
+vif(backward.model)
+vif(stepwise.model)
+# dropping the variables with vif greater than 5 and building model
+dropmodel=lm(log(Life.expectancy) ~ Country + Year + Adult.Mortality  + 
+    Alcohol + percentage.expenditure + Hepatitis.B + Measles + 
+     Polio + Total.expenditure + Diphtheria + 
+    HIV.AIDS  + thinness.5.9.years + Schooling,data=who2)
+summary(dropmodel)
+# again checking the vif but everthing is below 5
+vif(dropmodel)
+```
+
+# Non-parametric algorithms:
+
+## Random Forest
+
+```{r}
+library(ggRandomForests)
+who.rf=randomForest(log(Life.expectancy)~.,data=train,importance=TRUE)
+plot(gg_vimp(who.rf))
+varImpPlot(who.rf)
+sort(importance(who.rf)[,1],decreasing = TRUE)
+
+# Var explained: 66.94
+rf.model1=randomForest(log(Life.expectancy)~HIV.AIDS,data=train)
+rf.model1
+#Var explained: 77.04
+rf.model2=randomForest(log(Life.expectancy)~Adult.Mortality,data=train)
+rf.model2
+# Var explained: 90.08
+rf.model3=randomForest(log(Life.expectancy)~Country,data=train)
+rf.model3
+# Var explained: 63.29
+rf.model4=randomForest(log(Life.expectancy)~Income.composition.of.resources ,data=train)
+rf.model4
+# Var explained: 38.82
+rf.model5=randomForest(log(Life.expectancy)~thinness.5.9.years ,data=train)
+rf.model5
+# Var explained: 89.26
+rf.model6=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality,data=train)
+rf.model6
+# Var explained: 94.05
+rf.model7=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Income.composition.of.resources,data=train)
+rf.model7
+# Var explained: 94.9
+rf.model8=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources
+                         ,data=train)
+rf.model8
+# Var explained: 95.33
+rf.model9=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years,data=train)
+rf.model9
+# Var explained: 96.31
+rf.model10=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years,data=train)
+rf.model10
+# Var explained: 96.24
+rf.model11=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+Year,data=train)
+rf.model11
+# Var explained: 96.09
+rf.model12=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+Year+Alcohol,data=train)
+rf.model12
+# Var explained: 96.57
+rf.model13=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Country+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+infant.deaths,data=train)
+rf.model13
+# Var explained: 96.2
+rf.model14=randomForest(log(Life.expectancy)~HIV.AIDS+Adult.Mortality+Income.composition.of.resources+
+                         thinness.5.9.years+thinness..1.19.years+under.five.deaths+BMI+Schooling,data=train)
+rf.model14
+
+# Error Rate plot for model 13
+plot(rf.model13)
+
+```
+
+```{r}
+rf.predict=predict(rf.model13,newdata=test)
+pred.val=data.frame(Life.expectancy.test=test$Life.expectancy,Predicted=exp(rf.predict),Year=test$Year)
+pred.val
+
+library(Metrics)
+rmse(pred.val$Life.expectancy.test,pred.val$Predicted)
+
+
+ggplot(pred.val,aes(Life.expectancy.test))+geom_density(col="blue")+geom_density(aes(Predicted,col="red"))
+full.predict=predict(rf.model13,pmm.imp.data)
+ggplot(pmm.imp.data,aes(Life.expectancy),col="blue")+geom_density()+geom_density(aes(full.predict))
+
+
+```
