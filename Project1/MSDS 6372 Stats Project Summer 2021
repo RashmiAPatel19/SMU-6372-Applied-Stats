@@ -174,7 +174,7 @@ pmm.model2=with(data=pmm.data,expr = lm(log(Life.expectancy)~Country+Year+Status
                                             Diphtheria+HIV.AIDS+GDP+Population+thinness..1.19.years+thinness.5.9.years
                                             +Income.composition.of.resources+Schooling))
 
-# pool() function combines all the results obtained from 3 models
+# pool() function combines all the results obtained from 3 model
 summary(pool(pmm.model2))
 summary(pmm.model2)
 
