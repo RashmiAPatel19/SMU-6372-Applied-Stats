@@ -41,6 +41,39 @@ library(mice)
 library(lattice)
 library(glmnet)
 library(randomForest)
+
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggthemes)
+library(naniar)
+library(ggplot2)
+library(class)
+library(caret)
+library(e1071)
+library(plotly)
+library(Hmisc)
+library(regclass)
+library(reshape2)
+library(imputeTS)
+library(corrplot)
+library(olsrr)
+library(MASS)
+library(Amelia)
+library(corrplot)
+library(mice)
+library(VIM)
+library(hot.deck)
+library(fastDummies)
+library(glmnet)
+library(rsample)
+library(devtools)
+library(glmnetUtils)
+library(randomForest)
+library(Metrics)
+library(plotly)
+library(caret)
+library(ranger)
 ```
 ## Loading the data
 ```{r}
@@ -488,7 +521,7 @@ ggplot(pmm.imp.data,aes(x=Hepatitis.B,y=Adult.Mortality,col=Status))+geom_point(
 ```
 # Split the dataset in Train and Test set
 ```{r}
-train.model=createDataPartition(y=pmm.imp.data$Life.expectancy, p = 0.8, list = FALSE)
+train.model=createDataPartition(y=pmm.imp.data$Life.expectancy, p = 0.85, list = FALSE)
 train=who2[train.model,]
 test=who2[-train.model,]
 dim(train)
@@ -592,6 +625,129 @@ summary(dropmodel)
 # again checking the vif but everthing is below 5
 vif(dropmodel)
 ```
+# Simple Linear Regression Model
+
+```{r}
+# adj r2=0.6152
+simple.lm=lm(Life.expectancy ~ GDP + Schooling + BMI, data = train)
+summary(simple.lm)
+plot(simple.lm)
+# ASE/MSE =39.15
+mean(simple.lm$residuals^2)
+
+predict.lm=predict(simple.lm,newdata = test)
+ggplot(test,aes(Life.expectancy))+geom_density(col="blue")+geom_density(aes(predict.lm,col="red"))
+# Confidence interval for prediction
+predict.lm.conf=predict(simple.lm,newdata = test,interval = "confidence")
+predict.lm.conf
+# Prediction interval for prediction
+predict.lm.pred=predict(simple.lm,newdata = test,interval = "prediction")
+predict.lm.pred
+```
+
+# Complex Linear Regression Model
+```{r}
+LifeExpTrans=read.csv("https://raw.githubusercontent.com/RashmiAPatel19/SMU-6372-Applied-Stats/main/Project1/LifeExpTrans.csv",header = TRUE)
+#Data Prep
+#Transformed Data
+#Create Dummy Variables
+Transdummy = dummy_cols(LifeExpTrans, select_columns = 'Country', remove_selected_columns = T,
+                        remove_first_dummy = T)
+dim(Transdummy)
+head(Transdummy)
+#_________________
+
+#GLM Model
+#Train-Test Split
+Transindices = initial_split(Transdummy, prop = .85, strata = 'Life.expectancy')
+Transtrain = training(Transindices)
+Transtest = testing(Transindices)
+
+x.Transtrain = model.matrix(Life.expectancy ~ ., Transtrain)[,-1]
+y.Transtrain = log(Transtrain$Life.expectancy)
+
+x.Transtest = model.matrix(Life.expectancy ~ ., Transtest)[,-1]
+y.Transtest = log(Transtest$Life.expectancy)
+
+
+
+        #COMPLEX MODEL
+#Linear Complex Model with CV
+ctrl = trainControl(method = 'repeatedcv', number=10)
+modellm  = caret::train(log(Life.expectancy)~.* Schooling:exp(HIV.AIDS_Log) -
+                          Country_Zimbabwe:Schooling -
+                          Country_Austria - X.Country_New.Zealand. -
+                          Country_Slovenia -Country_Iceland- 
+                          
+                          thinness.5.9.years_Cube -infant.deaths_Log-
+                          Country_Niue -X.Country_United.Republic.of.Tanzania.-
+                          Adult.Mortality_Sqrt -
+                          Country_Morocco -Country_Cameroon -X.Country_Burkina.Faso. -thinness..1.19.years_Cube -
+                          Country_Chad -Country_Malawi -Country_Ghana -
+                          Diphtheria - Country_Iraq -Country_Spain -
+                          Country_Belarus -Country_Gambia - Polio- 
+                          
+                          
+                          Country_Dominica  -Country_Tuvalu -BMI  -Country_Monaco -                                                  
+                          Country_Nauru  -Country_Somalia  -Country_Togo   -
+                          Country_Palau  -Country_Pakistan --Country_Benin -
+                          Country_Maldives -Country_Bulgaria -
+                          X.Country_Democratic.Republic.of.the.Congo. -
+                          Country_Yemen -Country_Japan -Country_Turkmenistan -
+                          Country_Ireland  -Country_Hungary  -
+                          X.Country_Central.African.Republic. -Country_Philippines -
+                          Country_Italy -Country_Gabon -    
+                          
+                          Country_Nigeria + 
+                          Schooling:Measles_Log +
+                          Income.composition.of.resources:Adult.Mortality_Sqrt +
+                          BMI:percentage.expenditure_Log:Schooling, 
+                        data=Traintrans,
+                        method = 'lm',
+                        trControl = ctrl,
+                        tuneLength = 10)
+summary(modellm)
+# RMSE =0.0331
+# Rsquared =0.9490
+rmse(Actualtrans$Life.Expectancy, exp(predict(modellm, Testtrans)))
+modellm
+
+#Linear Complex Model No CV
+linearm = lm(log(Life.expectancy)~.* Schooling:exp(HIV.AIDS_Log) -
+               Country_Zimbabwe:Schooling -
+               Country_Austria - X.Country_New.Zealand. -
+               Country_Slovenia -Country_Iceland- 
+               
+               thinness.5.9.years_Cube -infant.deaths_Log-
+               Country_Niue -X.Country_United.Republic.of.Tanzania.-
+               Adult.Mortality_Sqrt -
+               Country_Morocco -Country_Cameroon -X.Country_Burkina.Faso. -thinness..1.19.years_Cube -
+               Country_Chad -Country_Malawi -Country_Ghana -
+               Diphtheria - Country_Iraq -Country_Spain -
+               Country_Belarus -Country_Gambia - Polio- 
+               
+               
+               Country_Dominica  -Country_Tuvalu -BMI  -Country_Monaco -                                                  
+               Country_Nauru  -Country_Somalia  -Country_Togo   -
+               Country_Palau  -Country_Pakistan --Country_Benin -
+               Country_Maldives -Country_Bulgaria -
+               X.Country_Democratic.Republic.of.the.Congo. -
+               Country_Yemen -Country_Japan -Country_Turkmenistan -
+               Country_Ireland  -Country_Hungary  -
+               X.Country_Central.African.Republic. -Country_Philippines -
+               Country_Italy -Country_Gabon -    
+               
+               Country_Nigeria + 
+               Schooling:Measles_Log +
+               Income.composition.of.resources:Adult.Mortality_Sqrt +
+               BMI:percentage.expenditure_Log:Schooling, 
+             data=Traintrans)
+summary(linearm)
+# RMSE=2.17
+# Rsquared = 0.9658
+rmse(Actualtrans$Life.Expectancy, exp(predict(linearm, Testtrans)))
+
+```
 
 # Non-parametric algorithms:
 
@@ -602,7 +758,6 @@ library(ggRandomForests)
 who.rf=randomForest(log(Life.expectancy)~.,data=train,importance=TRUE)
 plot(gg_vimp(who.rf))
 varImpPlot(who.rf)
-sort(importance(who.rf)[,1],decreasing = TRUE)
 
 # Var explained: 66.94
 rf.model1=randomForest(log(Life.expectancy)~HIV.AIDS,data=train)
@@ -667,10 +822,11 @@ pred.val
 library(Metrics)
 rmse(pred.val$Life.expectancy.test,pred.val$Predicted)
 
-
+# Prediction for test data
 ggplot(pred.val,aes(Life.expectancy.test))+geom_density(col="blue")+geom_density(aes(Predicted,col="red"))
-full.predict=predict(rf.model13,pmm.imp.data)
-ggplot(pmm.imp.data,aes(Life.expectancy),col="blue")+geom_density()+geom_density(aes(full.predict))
+# Predicton for whole data
+predict.full=predict(rf.model13,newdata=pmm.imp.data)
+ggplot(pmm.imp.data,aes(Life.expectancy))+geom_density(col="blue")+geom_density(aes(predict.full,col="red"))
 
 
 ```
