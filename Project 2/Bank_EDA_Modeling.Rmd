@@ -1,0 +1,313 @@
+---
+title: "Bank Analysis And Modeling"
+author: "Taylor Bonar & Michael Burgess & Rashmi Patel"
+date: "7/30/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse) # Data handling
+library(naniar) # Viz on Missing Data
+library(GGally) # Graphs!
+library(DataExplorer) # More Graphs!
+library(funModeling) # Helpful Functions for EDA Function
+library(Hmisc) # Helpful Functions for EDA Function
+library(caret) # Data Partitioning
+library(glmnet) # Modeling
+library(coefplot) # Coefficient modeling of glmnet objects
+library(corrplot) # Correlation Plotting
+
+setwd(".")
+basic_eda <- function(data) # Sample Function Source: https://blog.datascienceheroes.com/exploratory-data-analysis-in-r-intro/
+{
+  glimpse(data)
+  print(status(data))
+  freq(data) 
+  print(profiling_num(data))
+  plot_num(data)
+  describe(data)
+}
+
+# logit^{-1}: Can use to convert results of logistic regression to probability
+invlogit <- function(x) {1 / (1 + exp(-x))}
+```
+# Introduction
+The goal of this paper is to investigate banking data via an exploratory data analysis. Once we have initially examined the data, we will then move forward with attempting a classification model via logistic regression for predicting whether or not a client will subscribe to a banking institution given a direct marketing campaign taking place.
+
+# Exploratory Data Analysis
+
+The data we'll be exploring is from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/Bank+Marketing) relating to the direct marketing campaigns of a Portuguese banking institution. The initial data set consists of 45,211 observations with 20 inputs, dating between May 2008 to November 2010.
+
+As described by the UCI Machine Learning Repository, each of the variables/columns are described as:
+
+>**Input variables:**
+>**bank client data:**
+>
+>1 - age (numeric)
+>
+>2 - job : type of job (categorical: 'admin.','blue-collar','entrepreneur','housemaid','management','retired','self-employed','services','student','technician','unemployed','unknown')
+>
+>3 - marital : marital status (categorical: 'divorced','married','single','unknown'; note: 'divorced' means divorced or widowed)
+>
+>4 - education (categorical: 'basic.4y','basic.6y','basic.9y','high.school','illiterate','professional.course','university.degree','unknown')
+>
+>5 - default: has credit in default? (categorical: 'no','yes','unknown')
+>
+>6 - housing: has housing loan? (categorical: 'no','yes','unknown')
+>
+>7 - loan: has personal loan? (categorical: 'no','yes','unknown')
+>
+>**related with the last contact of the current campaign:**
+>
+>8 - contact: contact communication type (categorical: 'cellular','telephone')
+>
+>9 - month: last contact month of year (categorical: 'jan', 'feb', 'mar', ..., 'nov', 'dec')
+>
+>10 - day_of_week: last contact day of the week (categorical: 'mon','tue','wed','thu','fri')
+>
+>11 - duration: last contact duration, in seconds (numeric). Important note: this attribute highly affects the output target (e.g., if duration=0 then y='no'). Yet, the duration is not known before a call is performed. Also, after the end of the call y is obviously known. Thus, this input should only be included for benchmark purposes and should be discarded if the intention is to have a realistic predictive model.
+>
+>**other attributes:**
+>
+>12 - campaign: number of contacts performed during this campaign and for this client (numeric, includes last contact)
+>
+>13 - pdays: number of days that passed by after the client was last contacted from a previous campaign (numeric; 999 means client was not previously contacted)
+>
+>14 - previous: number of contacts performed before this campaign and for this client (numeric)
+>
+>15 - poutcome: outcome of the previous marketing campaign (categorical: 'failure','nonexistent','success')
+>
+># social and economic context attributes
+>
+>16 - emp.var.rate: employment variation rate - quarterly indicator (numeric)
+>
+>17 - cons.price.idx: consumer price index - monthly indicator (numeric)
+>
+>18 - cons.conf.idx: consumer confidence index - monthly indicator (numeric)
+>
+>19 - euribor3m: euribor 3 month rate - daily indicator (numeric)
+>
+>20 - nr.employed: number of employees - quarterly indicator (numeric)
+>
+>**Output variable (desired target):**
+>
+>21 - y - has the client subscribed a term deposit? (binary: 'yes','no')
+
+Another caution we will need to access is that within this dataset, there is potential for more than one contact to the same client. This repeat contact was necessary as it was required to assess the product (i.e. a bank term deposit) and whether the client would or would not be subscribed.
+
+```{r EDA}
+# Retrieve datasets zip
+if(!file.exists("./data/bank.zip")) {
+  download.file("https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank-additional.zip", "./bank-additional.zip", mode="wb")
+}
+unzip("./bank-additional.zip", files = c("bank-additional/bank-additional.csv","bank-additional/bank-additional-full.csv","bank-additional/bank-additional-names.txt"))
+
+# Read data into a data frame object
+full_bank <- read.csv("./bank-additional/bank-additional-full.csv", header = T, sep = ";")
+
+# Use function to create initial data insights for bank data
+basic_eda(full_bank)
+
+# Create a bird's eye view of missing data using naniar library if missing data exists
+if(sum(!complete.cases(full_bank)) > 0)
+{
+  vis_miss(full_bank, cluster = F) + # Without aggregating observations
+  labs(title = "NAs in Bank Data from May 2008 - Nov 2010") +
+  theme(axis.text.x = element_text(angle=90))
+}
+```
+
+As we can see in the initial EDA, we have a small percentage of data that is marked unknown. As we cannot accurately categorize this data into their appropriate categories, we'll convert this data into NAs and drop them since they are at most 1.5% of the total data.
+```{r unknown-transformation}
+full_bank[full_bank=="unknown"] <- NA
+
+basic_eda(full_bank)
+
+# Create a bird's eye view of missing data using naniar library if missing data exists
+vis_miss(full_bank, cluster = F) + # Wi
+labs(title = "NAs in Bank Data from May 2008 - Nov 2010") +
+theme(axis.text.x = element_text(angle=90))
+
+gg_miss_upset(full_bank)
+```
+Some interesting notes on the missing data is that the majority of the data seems to be the unknown status of whether an individual has defaulted on their credit or not. If default becomes a major predictor for whether a client will subscribe to a bank term deposit or not, some research should be explored here to discover why we cannot accurately define whether an individual defaults on their credit or not.
+
+```{r remove-NAs}
+complete_full_bank <- full_bank[complete.cases(full_bank),]
+
+# Transform all chr objects in data frame to a factor class as a secondary data frame object
+complete_full_bank <- as.data.frame(unclass(complete_full_bank), stringsAsFactors = T)
+
+vis_miss(complete_full_bank, cluster = F) + # Without aggregating observations b/c takes too long to aggregate
+labs(title = "Cleaned Observations in Bank Data from May 2008 - Nov 2010") +
+theme(axis.text.x = element_text(angle=90))
+```
+Now we have no missing data.
+
+### Is our Response Variables Unbalanced?
+
+```{r is-data-balanced}
+prop.table(table(complete_full_bank$y))
+freq(complete_full_bank, input="y")
+```
+
+Looking closer at our response variable, we have a significant lower percentage of yes's versus no's (12.66% yes's to 87.34% no's). With this in mind, we'll need to ensure either our sampling is weighted, or consider algorithms that can oversample or undersample when fitting our logistic regression model, otherwise we may introduce bias and lower our accuracy on predicting when a client successfully subscribes to a bank term deposit.
+
+### Examining Normality of Numeric Variables
+```{r normality-numeric}
+plot_num(complete_full_bank)
+```
+Looking closer at the histograms of the scale variables, it appears there are some potential normality issues.
+
+```{r Response-vs-Predictors}
+plot_bar(data=complete_full_bank, by = "y", nrow=2, ncol=2)
+```
+
+## Assumptions Investigation
+
+Before we fit the model, we should do preliminary assumptions check for logistic regression
+
+### Binary/Ordinal Response Variable
+```{r response-variable-assumption}
+nlevels(complete_full_bank$y)
+levels(complete_full_bank$y)
+```
+As you can see above, our response variable, y, consists of two levels, resulting in a binary response. We will move forward with a binary logistic regression model instead of an ordinal logistic regression model. 
+
+### Independent Observations
+```{r residuals}
+numeric_pred <- complete_full_bank %>% select_if(is.numeric)
+numeric_pred_names <- colnames(numeric_pred)
+```
+
+### Linearity of Continuous/Scale Variables vs. Log Odds of Response Variable
+
+```{r linearity-assumption}
+# numeric_pred <- test.data %>% select_if(is.numeric)
+# numeric_pred_names <- colnames(numeric_pred)
+# 
+# # binding logit and numeric predictors for scatterplots
+# linearity_data <- numeric_pred %>%
+#   mutate(logit = log(probabilities/(1-probabilities))) %>%
+#   gather(key = "predictors", value = "predictor.value", -logit)
+# 
+# ggplot(linearity_data, aes(logit, predictor.value))+
+#   geom_point(size = 0.5, alpha = 0.5) +
+#   geom_smooth(method = "loess", formula = "y~x") + 
+#   theme_bw() + 
+#   facet_wrap(~predictors, scales = "free_y")
+```
+
+### Multicollinearity of Explanatory Variables
+# Checking for correlation between variables
+
+* This table shows the correlation between the numerical variables
+
+ - nr.employed and emp.var.rate are 91% correlated. 
+ - nr.employed and euribor3m are 95% correlated.
+ - emp.var.rate and euribor3m are 97% correlated.
+ - cons.price.idx and emp.var.rate are 78% correlated.
+ - cons.price.idx and euribor3m are 69% correlated.
+ - cons.price.idx and nr.employed are 52% correlated.
+ 
+* Later we will examine pairwise multicolinearity within the continuous explanatory variables and VIF to see if which explanatory variables may be redundant.
+
+```{r}
+corrdfTraintable <- complete_full_bank %>% 
+  keep(is.numeric) %>% 
+  na.omit %>% 
+  cor %>% 
+  view
+
+view(corrdfTraintable)
+
+complete_full_bank %>% keep(is.numeric) %>% 
+  cor %>% 
+  corrplot("upper",
+           addCoef.col = "black",
+           number.digits = 2,
+           number.cex = 0.5,
+           method="shade",
+           order = "hclust",
+           tl.srt=45,
+           tl.cex = 0.8)
+
+ggcorr(data=complete_full_bank, label = T, nbreaks=5, label_size = 3, hjust = 0.9, size = 3, layout.exp = 4) +
+  labs(title = "Multicollinearity of Variables (Pairwise / Pearson's correlation)")
+```
+We don't observe any multicolinearity within the numeric responses, and don't see any need to remove any based on pairwise comparison. 
+
+### Outliers and Influential Observations
+
+# Logistic Regression Modeling
+As we have examined the model above, we are looking to see if with a direct marketing campaign, via phone calls, will allow us to predict whether or not a client will subscribe for a term deposit. Before we begin, let's have an initial look at our data and see if we can use logistic regression for prediction classification.
+
+## Model Selection
+Before we check the assumptions for logistic regression, we will use several means of automatic model selection to see what out of the 21 variables may be more useful for our logistic regression model. Once we've reduced our variables, we can then proceed forward with checking the assumptions. For our models, we'll use a 80/20 split of the data for predictions.
+
+```{r data-split}
+set.seed(2008)
+
+training_samples <- complete_full_bank$y %>% createDataPartition(p=0.8, list = F)
+
+train.data <- complete_full_bank[training_samples,]
+test.data <- complete_full_bank[-training_samples,]
+
+# Create matrix of predictors & convert to categorical predictors to appropriate dummy values
+## Dummy code categorical predictor variables
+x <- model.matrix(y~., train.data)[,-1]
+## Convert outcome/class to numerical variable
+y <- ifelse(train.data$y == "no", 1, 0)
+
+# Source on stepping through Penalized Logistic Regression: http://www.sthda.com/english/articles/36-classification-methods-essentials/149-penalized-logistic-regression-essentials-in-r-ridge-lasso-and-elastic-net/#compute-lasso-regression
+```
+
+### LASSO
+```{r LASSO Lambda}
+# Set seed and find ideal lambda for LASSO
+set.seed(2008)
+cv.l.model <- cv.glmnet(x, y, family = "binomial", alpha = 1) # Remeber alpha=1 means LASSO Regression
+
+# Plot of ideal lambda for minimizing CV error
+plot(cv.l.model)
+
+# Comparing Regression Coefficients from CV of lambda
+coefplot(cv.l.model, lambda=cv.l.model$lambda.min, family="binomial")
+coef(cv.l.model, cv.l.model$lambda.min)
+
+coef(cv.l.model, cv.l.model$lambda.1se)
+coefplot(cv.l.model, lambda=cv.l.model$lambda.1se, family="binomial")
+
+# Graphic to interact with lambda and coeficients
+coefpath(cv.l.model)
+```
+As we do not have an analyst to help specify the lambda value to use in our LASSO model to control the coefficient shrinkage, we elected to use cross-validation error to find a suitable lambda for our data. As can be observed, when examining the cross-validation error according to the log of lambda, our left dashed vertical line indicates the optimal value of -6.
+
+When choosing which lambda value to use when fitting our model, we generally want a balance between accuracy but also simplicity. That way, we can easily interpret the model if need be. Looking closer, we can examine from the coefficient tables, which lambda will provide a simple model. In this case, the within 1 standard error (1se) lambda has 25 variables that have non-zero coefficients, while our minimum lambda has 7 non-zero coefficients. For our initial model, we will use within 1 standard error lambda to produce a simpler model for understanding rather than for accuracy.
+
+```{R LASSO-model}
+set.seed(2008)
+
+# Fit a model w/ ideal lambda from cross-validation
+l.model <- glmnet(x, y, alpha = 1, family="binomial", lambda = cv.l.model$lambda.1se)
+
+# Predict on test data
+x.test <- model.matrix(y~., test.data)[,-1]
+probabilities <- l.model %>% predict(newx = x.test, type="response")
+predicted.classes <- ifelse(probabilities > 0.5, "no", "yes")
+
+# Accuracy Rate
+observed.classes <- test.data$y
+mean(predicted.classes == observed.classes)
+
+```
+
+## Interpreting the Parameters
+
+
+## Conclusion
+
+
+
